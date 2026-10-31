@@ -1,0 +1,18 @@
+# Ambiente virtual (cada pessoa cria o seu; não vai para o Git)
+.venv/
+
+# Arquivos gerados automaticamente pelo Python
+__pycache__/
+*.pyc
+
+# Saídas do PyInstaller (o .exe é gerado, não versionado)
+build/
+dist/
+*.spec
+
+# Cache do pytest
+.pytest_cache/
+
+# Configurações de editores
+.vscode/
+.idea/

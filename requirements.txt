@@ -1,0 +1,4 @@
+# Dependências que o PROGRAMA precisa para rodar (vão para dentro do .exe)
+customtkinter   # interface gráfica moderna (baseada no Tkinter)
+openpyxl        # exportar a escala para Excel
+requests        # verificar atualizações no GitHub

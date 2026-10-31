@@ -1,0 +1,4 @@
+# Dependências só para o DESENVOLVEDOR (não vão para o .exe)
+-r requirements.txt   # inclui também tudo do requirements.txt
+pytest                # testes automatizados
+pyinstaller           # gera o .exe

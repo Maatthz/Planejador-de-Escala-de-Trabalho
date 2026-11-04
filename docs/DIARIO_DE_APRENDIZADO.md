@@ -171,3 +171,17 @@ e `janela_justica.py` na interface).
 - **Integração lógica ↔ interface:** conectar funções puras de regras de negócio (`gerador.py`, `edicao.py`, `historico.py`) aos componentes gráficos sem acoplamento indevido, mantendo a camada de lógica limpa e independente de bibliotecas de GUI.
 - **Janelas modais (Modal Dialogs):** janelas secundárias (`CTkToplevel`) focadas em tarefas específicas que capturam as atenções e eventos do usuário (`grab_set`) e garantem cancelamento limpo ao fechar ou apertar `Esc`.
 - **Área de transferência (Clipboard):** canal de comunicação entre programas gerenciado pelo sistema operacional, acessado através de métodos como `clipboard_clear()` e `clipboard_append()` da janela Tkinter.
+
+## 04/11/2026 — Fase 7: Janela de Configurações e Ajuda Integrada
+
+**O que mudou:** implementada a janela modal completa de configurações do programa (`janela_configuracoes.py`), parametrizando todas as regras do sistema (turnos semanais, períodos, feriados, experiência nas duplas, parâmetros de escala, mensagens do WhatsApp e opções avançadas como regras de pares e backup manual), acompanhada por explicações e exemplos didáticos (`CampoComAjuda`), com 89 testes automatizados verdes.
+
+**Decisões:**
+- Cópia de trabalho isolada (`config_temp`): a tela cria uma cópia profunda (`copy.deepcopy`) das configurações e só aplica as mudanças em `DadosDoPrograma` quando o usuário clica em "Salvar alterações", evitando estados inconsistentes caso o usuário cancele.
+- Seção recolhível de opções avançadas: mantém a interface limpa e descomplicada para o uso diário, enquanto disponibiliza controles refinados (duplas fixas, restrições "nunca juntos", alternância de compensação de ausências e cópias manuais de segurança).
+- Validação preventiva com avisos humanos: checagem de integridade de turnos (mínimo 1 turno, duplas >= 1), aviso de capacidade caso a demanda de plantonistas supere os integrantes ativos e validação de consistência lógica entre "nunca juntos" e "sempre juntos".
+- Restauração segura de fábrica: botão "Restaurar padrão" em destaque vermelho com diálogo de confirmação prévia, restabelecendo as decisões acordadas no projeto sem comprometer os cadastros de integrantes e escalas.
+
+**Conceitos aprendidos:**
+- **Parametrização:** transformação de regras e números do código em dados e variáveis configuráveis pelo usuário, tornando o programa flexível a mudanças sem necessidade de alterar o código-fonte.
+- **Validação de entrada (Input Validation):** verificação cuidadosa de tudo o que o usuário digita ou seleciona antes de persistir no sistema, garantindo integridade e emitindo mensagens claras quando algum valor foge do esperado.

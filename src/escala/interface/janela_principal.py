@@ -23,6 +23,7 @@ from src.escala.interface.componentes import (
     CartaoFrame,
     mostrar_info,
 )
+from src.escala.interface.janela_configuracoes import JanelaConfiguracoes
 from src.escala.interface.tela_equipe import TelaEquipe
 from src.escala.interface.tela_escala import TelaEscala
 from src.escala.interface.tela_folgas import TelaFolgas
@@ -71,7 +72,7 @@ class JanelaPrincipal(ctk.CTk):
         btn_config = BotaoGrande(
             cabecalho,
             "⚙️ Configurações",
-            comando=self._abrir_configuracoes_placeholder,
+            comando=self._abrir_configuracoes,
             variante="secundaria",
             height=36,
         )
@@ -139,12 +140,9 @@ class JanelaPrincipal(ctk.CTk):
         lbl_s = ctk.CTkLabel(frame, text=subtitulo, font=FONTE_CORPO, text_color=COR_TEXTO_SUAVE)
         lbl_s.pack(pady=(0, 60))
 
-    def _abrir_configuracoes_placeholder(self) -> None:
-        """Placeholder para a janela de configurações da Fase 7."""
-        mostrar_info(
-            self,
-            "A tela de Configurações completas com textos de ajuda será ativada na Fase 7.",
-        )
+    def _abrir_configuracoes(self) -> None:
+        """Abre a janela modal de configurações completas com textos de ajuda."""
+        JanelaConfiguracoes(pai=self, dados=self.dados, ao_mudar=self.ao_mudar)
 
     def ao_mudar(self) -> None:
         """Salva o estado único e atualiza todas as visualizações (fluxo unidirecional)."""

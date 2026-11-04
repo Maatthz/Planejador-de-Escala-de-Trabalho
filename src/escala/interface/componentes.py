@@ -132,7 +132,7 @@ class CartaoFrame(ctk.CTkFrame):
 class CampoComAjuda(ctk.CTkFrame):
     """Combina um título, controle de entrada, explicação didática e exemplo prático."""
 
-    def __init__(self, master, chave_ajuda: str, widget_controle, **kwargs) -> None:
+    def __init__(self, master, chave_ajuda: str, widget_controle=None, **kwargs) -> None:
         super().__init__(master=master, fg_color="transparent", **kwargs)
         ajuda = obter_ajuda(chave_ajuda)
 
@@ -145,7 +145,14 @@ class CampoComAjuda(ctk.CTkFrame):
         )
         lbl_titulo.pack(fill="x", pady=(0, 4))
 
-        widget_controle.pack(fill="x", pady=(0, 6))
+        if callable(widget_controle):
+            self.widget = widget_controle(self)
+            self.widget.pack(fill="x", pady=(0, 6))
+        elif widget_controle is not None:
+            self.widget = widget_controle
+            self.widget.pack(fill="x", pady=(0, 6))
+        else:
+            self.widget = None
 
         lbl_explicacao = ctk.CTkLabel(
             self,
@@ -153,7 +160,7 @@ class CampoComAjuda(ctk.CTkFrame):
             font=FONTE_AJUDA,
             text_color=COR_TEXTO_SUAVE,
             justify="left",
-            wraplength=520,
+            wraplength=600,
             anchor="w",
         )
         lbl_explicacao.pack(fill="x", pady=(0, 2))
@@ -164,7 +171,7 @@ class CampoComAjuda(ctk.CTkFrame):
             font=FONTE_AJUDA,
             text_color=COR_TEXTO_SUAVE,
             justify="left",
-            wraplength=520,
+            wraplength=600,
             anchor="w",
         )
         lbl_exemplo.pack(fill="x")

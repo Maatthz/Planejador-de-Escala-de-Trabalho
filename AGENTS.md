@@ -1,337 +1,809 @@
 # AGENTS.md — Planejador de Escala de Plantão
 
-> Este arquivo é o guia oficial do projeto para qualquer agente de IA (ou pessoa) que for trabalhar no código.
-> **Leia tudo antes de fazer qualquer alteração.**
+> **Para a IA programadora:** este documento é a sua instrução de sistema. Ele contém **todas** as decisões já tomadas
+> em debate com o desenvolvedor. Leia-o inteiro antes de qualquer ação, siga as fases em ordem e **não reabra decisões
+> já tomadas** (seção 4) sem perguntar ao desenvolvedor.
 
 ---
 
-## 1. Visão geral
+## 0. Como usar este documento
 
-Programa de desktop para **montar a escala de plantão de fim de semana** de uma equipe.
+1. Leia as seções 1 e 2 (quem é o desenvolvedor e regras rígidas) — valem para **toda** resposta.
+2. Veja a seção 16 (**Status**) para saber em que fase o projeto está.
+3. Execute **somente a próxima fase** (seção 13), respeitando as assinaturas (seção 9) e os testes (seção 14).
+4. Ao concluir a fase: testes passando → explicação didática → diário atualizado → seção 16 atualizada → commit.
+
+---
+
+## 1. Quem é o desenvolvedor (LEIA COM ATENÇÃO)
+
+- **Iniciante em programação**, estudante de **Ciência da Computação**.
+- O projeto tem **dois objetivos de igual importância**: (a) entregar um programa útil para o usuário final; (b) **ensinar** o desenvolvedor.
+- Ele usa a IA no plano gratuito (poucos tokens): seja **objetivo**, sem repetir explicações já dadas — referencie o diário.
+- Ele vai **ler e estudar** o seu código. Código claro vale mais que código curto.
+
+### 1.1 Modo professor (OBRIGATÓRIO em toda alteração)
+Ao final de cada tarefa, responda com:
+
+1. **O que foi feito** — 1 a 3 frases.
+2. **Por que** — qual problema resolve.
+3. **Como funciona** — passo a passo, citando arquivos e funções.
+4. **Conceitos envolvidos** — nomeie e explique em 1–2 frases cada conceito novo (ex.: *dataclass*, *serialização*, *thread*, *algoritmo guloso*). Conceito já explicado antes: apenas cite.
+5. **Para aprender mais** (opcional) — 1 ou 2 termos para pesquisar.
+
+E registre em `docs/DIARIO_DE_APRENDIZADO.md`: data, o que mudou, decisões, conceitos aprendidos (mesmo formato das entradas existentes).
+
+---
+
+## 2. Regras rígidas para a IA programadora
+
+### 2.1 Processo
+- Uma fase por vez. **Não** adiante trabalho de fases futuras.
+- Dúvida sobre **regra de negócio** → pergunte ao desenvolvedor. Dúvida **técnica** pequena → escolha a opção mais simples e explique.
+- Assinaturas da seção 9 são o contrato. Pode criar funções auxiliares privadas (prefixo `_`); mudar uma assinatura pública exige justificar e atualizar este arquivo.
+- Antes de encerrar uma fase: `pytest` 100% verde. **Nunca** apague, pule ou enfraqueça um teste para fazê-lo passar.
+- Mudou estrutura de pastas, dependências ou decisões? Atualize este arquivo na mesma tarefa.
+- Commit ao fim de cada fase: `Fase N: <resumo>` (branch `main`).
+
+### 2.2 Código
+- **Python 3.12+**. Nomes de variáveis, funções, classes e comentários **em português** (sem acentos em identificadores: `funcao`, não `função`).
+- Toda função/classe pública: **type hints** + **docstring curta em português**.
+- Funções curtas (meta: ≤ 40 linhas). Sem "one-liners espertos", sem metaprogramação, sem herança desnecessária.
+- Comentários explicam o **porquê**.
+- Caminhos com `pathlib.Path`. Datas com `datetime.date`.
+- **Nunca** use `locale`/`strftime("%A")` para nomes de dias (depende do idioma do Windows) — use `datas.py`.
+- **Nunca** use o `random` global: use uma instância `random.Random(semente)` recebida como parâmetro (testes reproduzíveis).
+- Registre erros inesperados com `logging` no arquivo `registro.log` (pasta de dados).
+
+### 2.3 Arquitetura
+- **Camada de lógica** (`modelos`, `datas`, `armazenamento`, `historico`, `gerador`, `edicao`, `exportar`, `atualizador`, `textos_ajuda`) **nunca** importa `customtkinter` nem nada de `interface/`.
+- A interface **nunca** lê/escreve JSON diretamente: sempre via `armazenamento.py`.
+- Erros de regra são `ErroEscala` com mensagem **já pronta para o usuário**. A interface captura exceções e mostra mensagens humanas — **nunca** um *traceback*.
+
+### 2.4 Limites
+- Dependências permitidas: as da seção 5. Qualquer outra exige justificativa + aprovação do desenvolvedor.
+- Nunca salvar dados ao lado do `.exe`. Nunca apagar dados do usuário sem confirmação **e** backup.
+- Nunca colocar tokens/senhas no código.
+
+---
+
+## 3. O produto
+
+Programa de desktop (Windows) para **montar a escala de plantão de fim de semana** de uma equipe, em duplas.
 
 | Item | Valor |
 |---|---|
-| Pessoas na equipe | 28 (deve ser configurável) |
-| Formato do plantão | Duplas, em **turnos de meio período** (manhã ou tarde) |
-| Duplas por fim de semana | 8 (= 16 pessoas, 12 de folga). Padrão: 4 duplas sábado manhã + 4 duplas domingo tarde — configurável |
-| Feriados | Também têm plantão (usuário escolhe turnos e nº de duplas; padrão: 4 duplas) |
+| Equipe | 28 pessoas (qualquer número) |
+| Plantão | Duplas, em turnos de meio período |
+| Padrão semanal | 4 duplas sábado manhã + 4 duplas domingo tarde (16 pessoas; 12 folgam) |
+| Feriados | Também têm plantão |
 | Geração | Semanal (às vezes quinzenal) |
 | Divulgação | Texto copiado e colado no WhatsApp |
-| Usuário final | Pouca experiência com computador |
-| Distribuição | Um único `.exe` que a pessoa baixa e abre (sem instalar Python) |
-| Atualizações | Automáticas via GitHub Releases |
+| Usuário final | **Uma única pessoa**, em um computador, **leiga em informática** |
+| Distribuição | Um `.exe` único: baixa e abre, sem instalar nada |
+| Atualização | Automática via GitHub Releases |
 
-### Objetivos principais
-1. **Simplicidade extrema para o usuário final**: poucos botões, textos claros em português, sem termos técnicos.
-2. **Escala justa**: todos trabalham aproximadamente a mesma quantidade de vezes.
-3. **Atualização fácil**: o desenvolvedor publica uma versão nova no GitHub e o programa avisa e se atualiza.
-4. **Didático**: o projeto também é material de estudo do desenvolvedor (iniciante, estudante de Ciência da Computação).
-
----
-
-## 2. Regras para o agente (OBRIGATÓRIO)
-
-### 2.1 Modo professor
-O desenvolvedor está aprendendo. **Toda alteração deve vir acompanhada de uma explicação**, contendo:
-
-1. **O que foi feito** — resumo em 1–3 frases.
-2. **Por que foi feito** — qual problema resolve.
-3. **Como funciona** — explicação passo a passo do código novo, citando arquivos e funções.
-4. **Conceitos envolvidos** — nomeie e explique brevemente os conceitos de programação usados
-   (ex.: "dicionário", "classe", "requisição HTTP", "algoritmo guloso", "serialização JSON").
-5. **Para aprender mais** (opcional) — 1 ou 2 sugestões do que pesquisar.
-
-Além disso, registre cada mudança relevante em `docs/DIARIO_DE_APRENDIZADO.md` (data, o que mudou, conceitos aprendidos).
-
-### 2.2 Estilo de código
-- Linguagem: **Python 3.12+**.
-- Nomes de variáveis, funções e comentários **em português** (facilita o aprendizado). Ex.: `gerar_escala()`, `lista_de_pessoas`.
-- Código simples e legível > código "esperto". Evite abstrações desnecessárias.
-- Toda função deve ter uma *docstring* curta explicando o que faz.
-- Comentários explicando o **porquê**, não só o **o quê**.
-- Use *type hints* (`def somar(a: int, b: int) -> int:`), explicando o conceito na primeira vez.
-- Mudanças pequenas e incrementais. Uma funcionalidade por vez.
-
-### 2.3 Limites
-- Não adicionar dependências sem justificar (e explicar ao desenvolvedor).
-- Nunca apagar dados do usuário sem confirmação e backup.
-- Não alterar a estrutura de pastas sem atualizar este arquivo.
+### Princípios de UX (não negociáveis)
+- Funciona **sem configurar nada** (padrões = respostas do desenvolvedor).
+- Botões grandes, fonte ≥ 14, português simples ("Gerar escala", nunca "Executar algoritmo").
+- Toda configuração tem **explicação + exemplo** visíveis (seção 11).
+- Ações destrutivas pedem confirmação. Salvamento **automático**.
+- Mensagens de erro humanas: ❌ `KeyError: 12` → ✅ "Não há pessoas suficientes no sábado 07/11 (manhã): precisa de 8, há 6."
 
 ---
 
-## 3. Stack tecnológica (e por quê)
+## 4. Decisões de negócio (fechadas em 04/11/2026)
 
-| Tecnologia | Uso | Por que essa escolha |
+### 4.1 Regras confirmadas
+| Tema | Decisão |
+|---|---|
+| Funções das duplas | Todas fazem a mesma coisa |
+| Duração | Meio período (turno). Turnos configuráveis |
+| Restrições de dupla | Por padrão nenhuma; duplas sempre variam |
+| Experiência | Preferível 1 experiente por dupla, não obrigatório |
+| Feriados | Entram na escala; usuário escolhe turnos e nº de duplas |
+| Período | Semanal; às vezes quinzenal |
+| Divulgação | Só WhatsApp (sem Excel/PDF) |
+| Pessoa nova / volta de férias | **Não compensa**: volta empatada com quem menos trabalhou (objetivo é descanso, não "dívida") |
+| Editar escala já confirmada | Sim (registrar trocas de última hora); a justiça se recalcula sozinha |
+| Usuários | Uma pessoa, um computador → **sem login/controle de acesso** |
+| Backup manual | Não é necessário no uso normal (fica em "Opções avançadas") |
+| Segurança da atualização | Verificação SHA-256 do `.exe` (invisível ao usuário) + 2FA na conta GitHub do desenvolvedor |
+| Grupos de 3+ pessoas | **Fora do escopo** (YAGNI) |
+
+### 4.2 Tudo é configurável (parametrização)
+As respostas acima são o **padrão**; as alternativas ficam em **⚙️ Configurações**.
+
+| Configuração | Padrão | Alternativas | Seção na tela |
+|---|---|---|---|
+| Turnos semanais | Sáb manhã 4 + Dom tarde 4 | Qualquer dia/período/nº de duplas | Turnos |
+| Nomes dos períodos | manhã, tarde, noite, dia inteiro | Editar/adicionar | Turnos |
+| Plantão em feriados | Ligado | Desligado | Feriados |
+| Padrão de feriado | `{"manhã": 4}` | Qualquer período/nº | Feriados |
+| Experiência na dupla | Preferência | Obrigatória / Ignorar | Duplas |
+| Semanas por geração | 1 | 2 (quinzenal) ou N | Escala |
+| Título / texto final da mensagem | "📋 *ESCALA DE PLANTÃO*" / vazio | Texto livre | Mensagem |
+| Evitar semanas seguidas | Ligado | Desligado | Avançadas |
+| Compensar ausências | Desligado | Ligado | Avançadas |
+| Nunca juntos | (vazio) | Pares de pessoas | Avançadas |
+| Duplas fixas (sempre juntos) | (vazio) | Pares de pessoas | Avançadas |
+| Cópia de segurança manual | — | Botões "Salvar cópia" / "Restaurar" | Avançadas |
+
+Botão **"Restaurar padrão"** desfaz todas as configurações (com confirmação).
+
+---
+
+## 5. Stack tecnológica
+
+| Tecnologia | Uso | Justificativa (do debate) |
 |---|---|---|
-| **Python** | Linguagem principal | Fácil de aprender, muito usada na faculdade |
-| **CustomTkinter** | Interface gráfica | Baseado no Tkinter (que já vem com o Python), mas com visual moderno. Simples de aprender |
-| **JSON** | Armazenamento de dados | Arquivo de texto legível; ótimo para aprender. (Futuro opcional: SQLite) |
-| **requests** | Verificar atualizações no GitHub | Biblioteca padrão de mercado para HTTP |
-| **PyInstaller** | Gerar o `.exe` | Empacota Python + bibliotecas em um único arquivo executável |
-| **pytest** | Testes automatizados | Garante que o algoritmo da escala continua correto após mudanças |
-| **GitHub Actions** | Build automático do `.exe` | Ao criar uma *tag* de versão, o GitHub gera o `.exe` e publica a Release sozinho |
+| Python 3.12+ | Linguagem | Didática, usada na faculdade |
+| CustomTkinter | Interface | Desktop moderno e simples; vai dentro do `.exe` (usuário não instala nada). Streamlit foi descartado: na nuvem exige banco externo e internet; em `.exe` fica pesado e frágil |
+| JSON (stdlib) | Dados | Legível, didático; 1 usuário e poucos dados → banco de dados seria exagero |
+| requests | HTTP (atualizador) | Padrão de mercado |
+| hashlib, threading, logging, dataclasses (stdlib) | SHA-256, segundo plano, log, modelos | Já vêm com o Python |
+| pytest *(dev)* | Testes | Garante o algoritmo |
+| PyInstaller *(dev)* | `.exe` único | Empacota Python + bibliotecas |
+| GitHub Actions | CI/CD | Testa e publica Releases ao criar uma *tag* |
+
+`requirements.txt`: `customtkinter`, `requests`. `requirements-dev.txt`: `-r requirements.txt`, `pytest`, `pyinstaller`.
+**Sem** `tkcalendar` (o calendário é um componente próprio — bom exercício e evita problemas no PyInstaller).
 
 ---
 
-## 4. Estrutura de pastas
+## 6. Estrutura de diretórios
 
 ```
 Planejador de Escala de Trabalho/
-├── AGENTS.md                  # Este arquivo
-├── README.md                  # Como rodar, como gerar o .exe (para o desenvolvedor)
-├── requirements.txt           # Dependências do PROGRAMA (vão para o .exe)
-├── requirements-dev.txt       # Dependências de desenvolvimento (pytest, pyinstaller)
-├── pytest.ini                 # Configuração do pytest
+├── AGENTS.md                    # Este arquivo
+├── README.md                    # Guia do desenvolvedor (rodar, testar, publicar)
+├── requirements.txt
+├── requirements-dev.txt
+├── pytest.ini
 ├── .gitignore
+├── iniciar.py                   # Lançador usado pelo PyInstaller (chama src.escala.main.iniciar)
 ├── src/
 │   └── escala/
 │       ├── __init__.py
-│       ├── main.py            # Ponto de entrada: abre a janela
-│       ├── versao.py          # VERSAO = "1.0.0" (única fonte da versão)
-│       ├── modelos.py         # Classes de dados: Pessoa, Dupla, FimDeSemana, Escala
-│       ├── armazenamento.py   # Ler/salvar JSON, backups
-│       ├── gerador.py         # ALGORITMO que monta a escala (coração do projeto)
-│       ├── exportar.py        # Gera o texto da escala para colar no WhatsApp
-│       ├── atualizador.py     # Verifica e baixa atualizações do GitHub
+│       ├── main.py              # Configura logging, carrega dados, abre a janela
+│       ├── versao.py            # VERSAO e REPOSITORIO_GITHUB
+│       ├── modelos.py           # Dataclasses (seção 7)
+│       ├── datas.py             # Utilidades de data em português
+│       ├── armazenamento.py     # JSON, backups, salvamento atômico, recuperação
+│       ├── historico.py         # Contadores de justiça a partir das escalas confirmadas
+│       ├── gerador.py           # ALGORITMO da escala (coração do projeto)
+│       ├── edicao.py            # Trocar pessoas, validar, confirmar rascunho
+│       ├── exportar.py          # Texto para WhatsApp
+│       ├── textos_ajuda.py      # Explicações + exemplos de cada configuração
+│       ├── atualizador.py       # GitHub Releases + SHA-256 + substituição do .exe
 │       └── interface/
 │           ├── __init__.py
-│           ├── janela_principal.py
-│           ├── tela_pessoas.py      # Cadastro da equipe
-│           ├── tela_folgas.py       # Indisponibilidades (férias, etc.)
-│           ├── tela_escala.py       # Gerar / visualizar / editar escala
-│           ├── janela_turnos.py     # Configurar os turnos do fim de semana (uso raro)
-│           └── componentes.py       # Botões e widgets reutilizáveis
+│           ├── componentes.py           # BotaoGrande, CampoComAjuda, CalendarioMensal, diálogos
+│           ├── janela_principal.py      # Janela, abas, cabeçalho, rodapé
+│           ├── tela_equipe.py           # Aba 👥 Equipe
+│           ├── tela_folgas.py           # Aba 📅 Folgas
+│           ├── tela_escala.py           # Aba 📋 Escala
+│           ├── janela_feriado.py        # Diálogo "Adicionar feriado"
+│           ├── janela_historico.py      # Escalas anteriores (ver/editar/excluir)
+│           └── janela_configuracoes.py  # ⚙️ Configurações (com ajuda)
 ├── tests/
+│   ├── conftest.py              # Fixtures: equipe de 28, configuração padrão, pasta temporária
 │   ├── test_versao.py
+│   ├── test_modelos.py
+│   ├── test_datas.py
+│   ├── test_armazenamento.py
+│   ├── test_historico.py
 │   ├── test_gerador.py
-│   └── test_armazenamento.py
+│   ├── test_edicao.py
+│   ├── test_exportar.py
+│   ├── test_textos_ajuda.py
+│   └── test_atualizador.py      # Sem internet: usa monkeypatch
 ├── docs/
 │   ├── DIARIO_DE_APRENDIZADO.md
-│   └── MANUAL_DO_USUARIO.md   # Manual simples, com prints, para o usuário final
+│   └── MANUAL_DO_USUARIO.md
 └── .github/
     └── workflows/
-        └── release.yml        # Build do .exe e publicação da Release
+        ├── testes.yml           # pytest a cada push
+        └── release.yml          # Tag v* → testes → .exe → .sha256 → Release
 ```
-
-**Separação importante (conceito: separação de responsabilidades):**
-`gerador.py`, `modelos.py` e `armazenamento.py` **não podem importar nada da interface**. Assim a lógica pode ser testada sem abrir janelas.
 
 ---
 
-## 5. Modelo de dados
+## 7. Modelo de dados
 
+### 7.1 Classes (`modelos.py`)
 ```python
-Pessoa:
+from dataclasses import dataclass, field
+from datetime import date, datetime
+
+PERIODOS_PADRAO: list[str] = ["manhã", "tarde", "noite", "dia inteiro"]
+MODOS_EXPERIENCIA: list[str] = ["preferencia", "obrigatoria", "ignorar"]
+
+
+@dataclass
+class Pessoa:
+    """Uma pessoa da equipe."""
     id: int
     nome: str
-    ativo: bool                      # permite "desligar" alguém sem apagar o histórico
-    experiente: bool                 # usado para tentar ter 1 experiente por dupla
-    indisponibilidades: list[date]   # datas em que não pode trabalhar
+    experiente: bool = False
+    ativo: bool = True                    # desativar = não escalar, mas manter histórico
+    data_entrada: date = field(default_factory=date.today)  # ao reativar, vira a data de hoje
+    indisponibilidades: set[date] = field(default_factory=set)
 
-ModeloDeTurno:                       # CONFIGURAÇÃO: quais turnos existem no fim de semana
-    dia_da_semana: int               # 5 = sábado, 6 = domingo (padrão do Python: date.weekday())
-    periodo: str                     # "manhã" ou "tarde"
-    qtd_duplas: int                  # ex.: 4
 
-Feriado:
+@dataclass
+class ModeloDeTurno:
+    """Turno que se repete toda semana. Ex.: sábado (5), manhã, 4 duplas."""
+    dia_da_semana: int                    # 0 = segunda ... 5 = sábado, 6 = domingo (date.weekday())
+    periodo: str
+    qtd_duplas: int
+
+
+@dataclass
+class Feriado:
+    """Data especial com plantão próprio."""
     data: date
-    nome: str                        # ex.: "Finados" (opcional)
-    periodos: dict[str, int]         # período -> nº de duplas; padrão {"manhã": 4}
+    nome: str = ""
+    periodos: dict[str, int] = field(default_factory=lambda: {"manhã": 4})  # período -> nº de duplas
 
-Dupla:
+
+@dataclass
+class Dupla:
+    """Duas pessoas (por id) trabalhando juntas."""
     pessoa_a: int
     pessoa_b: int
 
-Plantao:                             # um turno em uma data específica
-    data: date
-    periodo: str                     # "manhã" ou "tarde"
-    eh_feriado: bool
-    duplas: list[Dupla]
+    def ids(self) -> tuple[int, int]:
+        """Retorna os dois ids."""
 
-Escala:
+    def contem(self, id_pessoa: int) -> bool:
+        """Diz se a pessoa está nesta dupla."""
+
+
+@dataclass
+class Plantao:
+    """Um turno em uma data específica, com suas duplas."""
+    data: date
+    periodo: str
+    qtd_duplas: int
+    eh_feriado: bool = False
+    nome_feriado: str = ""
+    duplas: list[Dupla] = field(default_factory=list)
+
+    def pessoas(self) -> set[int]:
+        """Ids de todas as pessoas escaladas neste plantão."""
+
+
+@dataclass
+class Escala:
+    """Conjunto de plantões gerados de uma vez (1 ou mais semanas)."""
     plantoes: list[Plantao]
     gerada_em: datetime
-    confirmada: bool                 # só escalas confirmadas contam no histórico
+    confirmada: bool = False
+
+    def primeiro_dia(self) -> date:
+        """Data do primeiro plantão."""
+
+    def ultimo_dia(self) -> date:
+        """Data do último plantão."""
+
+    def pessoas_no_dia(self, dia: date) -> set[int]:
+        """Ids de quem trabalha em qualquer plantão nesta data."""
+
+
+@dataclass
+class Configuracao:
+    """Todas as opções que o usuário pode mudar. Os valores padrão são as decisões da seção 4."""
+    turnos: list[ModeloDeTurno] = field(default_factory=lambda: [
+        ModeloDeTurno(5, "manhã", 4), ModeloDeTurno(6, "tarde", 4)])
+    periodos: list[str] = field(default_factory=lambda: list(PERIODOS_PADRAO))  # também define a ORDEM no dia
+    feriados_ativos: bool = True
+    feriado_periodos_padrao: dict[str, int] = field(default_factory=lambda: {"manhã": 4})
+    modo_experiencia: str = "preferencia"
+    semanas_por_geracao: int = 1
+    titulo_mensagem: str = "📋 *ESCALA DE PLANTÃO*"
+    texto_final_mensagem: str = ""
+    evitar_semanas_seguidas: bool = True
+    compensar_ausencias: bool = False
+    nunca_juntos: list[tuple[int, int]] = field(default_factory=list)
+    sempre_juntos: list[tuple[int, int]] = field(default_factory=list)
+
+
+@dataclass
+class DadosDoPrograma:
+    """Tudo o que é salvo no arquivo de dados."""
+    pessoas: list[Pessoa] = field(default_factory=list)
+    configuracao: Configuracao = field(default_factory=Configuracao)
+    feriados: list[Feriado] = field(default_factory=list)
+    escalas: list[Escala] = field(default_factory=list)   # SOMENTE confirmadas (histórico)
+    rascunho: Escala | None = None                       # última gerada, ainda não confirmada
+    proximo_id: int = 1
+
+    def buscar_pessoa(self, id_pessoa: int) -> Pessoa | None:
+        """Retorna a pessoa com esse id (ou None)."""
+
+    def pessoas_ativas(self) -> list[Pessoa]:
+        """Lista das pessoas ativas, em ordem alfabética."""
+
+    def adicionar_pessoa(self, nome: str, experiente: bool = False) -> Pessoa:
+        """Cria a pessoa com novo id. Levanta ErroEscala se o nome for vazio ou repetido (ignora maiúsculas)."""
+```
+> `ErroEscala` é definido em `modelos.py` (para todos os módulos poderem usá-lo sem importação circular):
+> `class ErroEscala(Exception): """Erro de regra com mensagem pronta para o usuário."""`
+
+### 7.2 Arquivo de dados
+- Local: `%APPDATA%/PlanejadorEscala/dados.json` (variável de ambiente `PLANEJADOR_PASTA_DADOS` substitui a pasta — usada nos testes).
+- Backups: `%APPDATA%/PlanejadorEscala/backups/dados_AAAAMMDD_HHMMSS.json` — cópia **antes** de cada salvamento; manter os 10 mais recentes.
+- Log: `%APPDATA%/PlanejadorEscala/registro.log` (`RotatingFileHandler`, 1 MB, 3 arquivos).
+- **Salvamento atômico**: grava em `dados.json.tmp` e depois `os.replace()` → um desligamento no meio nunca corrompe o arquivo.
+- **Recuperação**: se `dados.json` estiver corrompido, carregar o backup válido mais recente e avisar o usuário.
+- Datas em ISO (`"2026-11-07"`); conjuntos viram listas ordenadas; tuplas viram listas.
+
+```json
+{
+  "versao_dados": 1,
+  "proximo_id": 3,
+  "pessoas": [
+    {"id": 1, "nome": "Ana", "experiente": true, "ativo": true,
+     "data_entrada": "2026-11-01", "indisponibilidades": ["2026-11-14"]},
+    {"id": 2, "nome": "Bruno", "experiente": false, "ativo": true,
+     "data_entrada": "2026-11-01", "indisponibilidades": []}
+  ],
+  "configuracao": {
+    "turnos": [{"dia_da_semana": 5, "periodo": "manhã", "qtd_duplas": 4},
+               {"dia_da_semana": 6, "periodo": "tarde", "qtd_duplas": 4}],
+    "periodos": ["manhã", "tarde", "noite", "dia inteiro"],
+    "feriados_ativos": true,
+    "feriado_periodos_padrao": {"manhã": 4},
+    "modo_experiencia": "preferencia",
+    "semanas_por_geracao": 1,
+    "titulo_mensagem": "📋 *ESCALA DE PLANTÃO*",
+    "texto_final_mensagem": "",
+    "evitar_semanas_seguidas": true,
+    "compensar_ausencias": false,
+    "nunca_juntos": [],
+    "sempre_juntos": []
+  },
+  "feriados": [{"data": "2026-11-20", "nome": "Consciência Negra", "periodos": {"manhã": 4}}],
+  "rascunho": null,
+  "escalas": [
+    {"gerada_em": "2026-11-04T17:00:00", "confirmada": true,
+     "plantoes": [{"data": "2026-11-07", "periodo": "manhã", "qtd_duplas": 4,
+                   "eh_feriado": false, "nome_feriado": "", "duplas": [[1, 2]]}]}
+  ]
+}
 ```
 
-Configuração padrão de turnos: `[ModeloDeTurno(5, "manhã", 4), ModeloDeTurno(6, "tarde", 4)]`.
+---
 
-### Arquivo de dados
-- Local: `%APPDATA%/PlanejadorEscala/dados.json` (NÃO salvar ao lado do `.exe`, pois a atualização substitui o `.exe`).
-- Backup automático a cada salvamento em `%APPDATA%/PlanejadorEscala/backups/` (manter os últimos 10).
-- Incluir campo `"versao_dados": 1` no JSON para permitir migrações futuras.
-- O JSON guarda: `pessoas`, `configuracao` (turnos), `feriados` e `escalas` (histórico + rascunho atual).
+## 8. Algoritmo da escala
+
+### 8.1 Definições
+- **Plantão**: um turno numa data (ex.: sábado 07/11, manhã, 4 duplas).
+- **Semana**: segunda a domingo (`date.isocalendar()`), incluindo feriados dela.
+- **Presente na semana**: pessoa ativa, com `data_entrada` ≤ último dia da semana e disponível em pelo menos um plantão da semana. Caso contrário, **ausente**.
+
+### 8.2 Regras
+**Obrigatórias (nunca violar; se impossível → `ErroEscala`):**
+1. Cada plantão tem exatamente `qtd_duplas` duplas.
+2. Ninguém em dois plantões no mesmo dia.
+3. Ninguém escalado em data indisponível.
+4. Só pessoas ativas.
+5. Se configurado: "nunca juntos" nunca formam dupla; experiência "obrigatória" é garantida.
+
+**Desejáveis (em ordem de importância):**
+6. Equilíbrio geral: diferença de carga entre quem mais e quem menos trabalhou ≤ 1.
+7. Equilíbrio de feriados (contador separado).
+8. No máximo um plantão por pessoa por semana (só repete se faltar gente, ex.: Carnaval).
+9. Um experiente por dupla (modo "preferencia").
+10. Variedade de parceiros.
+11. Descanso: evitar semanas seguidas (se ligado).
+12. (Leve) Alternar dia/período.
+
+### 8.3 Contadores de justiça (`historico.py`)
+São **sempre recalculados** a partir das escalas **confirmadas** (fonte única da verdade — nada de contador salvo no JSON). Editar uma escala confirmada corrige a justiça automaticamente.
+
+Reprocessar as semanas em ordem cronológica:
+1. Para cada plantão da semana: `carga[id] += 1`; se feriado, `feriados[id] += 1`; atualizar `ultimo_plantao`, `vezes_juntos`, `vezes_no_turno`, `semanas_trabalhadas`.
+2. **Piso (regra "não compensar")**: ao fim da semana, cada pessoa **ausente** recebe `carga = max(carga, menor carga entre os presentes)` (idem para `feriados`).
+   - Com `compensar_ausencias = True`, indisponibilidade **não** torna a pessoa ausente (ela "fica devendo"). Semanas antes de `data_entrada` sempre contam como ausência (pessoa nova nunca deve plantões).
+   - Resultado: pessoa nova, reativada ou que volta de férias **entra empatada com quem menos trabalhou**.
+
+### 8.4 Geração (`gerador.py`) — algoritmo guloso
+1. `montar_plantoes_vazios`: para cada dia do período, se for feriado (e `feriados_ativos`) usa os períodos do feriado — **um feriado num sábado substitui os turnos do sábado**; senão, usa os `turnos` do dia da semana. Ordenar por data e pela ordem de `configuracao.periodos`.
+2. Copiar os contadores do histórico (`copy.deepcopy`). Para cada plantão em ordem:
+   1. **Candidatos**: ativos, disponíveis na data, ainda não escalados nesse dia.
+   2. Se `len(candidatos) < 2 × qtd_duplas` → `ErroEscala("Não há pessoas suficientes no sábado 07/11 (manhã): precisa de 8, há 6.")`.
+   3. **Ordenar** pela tupla (menor = maior prioridade):
+      ```
+      (trabalha_nesta_semana: 0/1,
+       carga,
+       feriados se o plantão for feriado, senão 0,
+       trabalhou_semana_anterior: 0/1   (0 se evitar_semanas_seguidas=False),
+       -dias_desde_ultimo_plantao        (0 se evitar_semanas_seguidas=False; nunca trabalhou = 9999),
+       vezes_no_turno[(id, dia_da_semana, periodo)],
+       sorteio.random())
+      ```
+   4. **Escolher** os `2 × qtd_duplas` primeiros. Duplas fixas: ao escolher alguém com par fixo que também é candidato, levar os dois (se couber; senão pular para o próximo). Par fixo indisponível → a pessoa entra sozinha normalmente.
+   5. Modo **obrigatória**: se houver menos experientes que `qtd_duplas` entre os escolhidos, trocar os não experientes de menor prioridade pelos experientes não escolhidos de maior prioridade. Ainda insuficiente → `ErroEscala` sugerindo mudar a opção para "Preferência".
+   6. **Formar duplas** (`formar_duplas`):
+      1. Duplas fixas escolhidas primeiro.
+      2. Se modo ≠ "ignorar": cada experiente (em ordem de prioridade) com o não experiente de menor `vezes_juntos`.
+      3. Restantes: repetidamente, o par de menor `custo_do_par`.
+      - `custo_do_par` = (10 se nenhum experiente e modo ≠ "ignorar") + `vezes_juntos` + (∞ se "nunca juntos").
+      - Se só sobrar par proibido → `ErroEscala` amigável.
+   7. `registrar_plantao` nos contadores e seguir.
+3. A escala nasce como **rascunho** (`confirmada=False`). Gerar de novo substitui o rascunho e não afeta a justiça.
+
+> Evolução futura (exercício de faculdade, fora do escopo): comparar com *backtracking* ou OR-Tools.
 
 ---
 
-## 6. Algoritmo de geração da escala (`gerador.py`)
+## 9. Assinaturas (contrato da camada de lógica)
 
-### Definições
-- **Plantão**: um turno em uma data (ex.: sábado 07/11, manhã, 4 duplas).
-- **Semana**: sábado + domingo + feriados daquela semana. Gera-se 1 semana (ou 2, quinzenal) de cada vez.
+### `versao.py`
+```python
+VERSAO: str = "0.1.0"                 # MAIOR.MENOR.CORREÇÃO
+REPOSITORIO_GITHUB: str = ""          # "usuario/repositorio" — preencher quando o repo existir
+```
 
-### Regras
-**Obrigatórias (nunca violar):**
-1. Cada plantão tem exatamente o nº de duplas configurado.
-2. Ninguém trabalha em dois plantões no mesmo dia.
-3. Ninguém é escalado em data marcada como indisponível.
-4. Só pessoas ativas são escaladas.
+### `datas.py`
+```python
+DIAS_DA_SEMANA: list[str] = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
 
-**Desejáveis (otimizar, em ordem de importância):**
-5. **Equilíbrio geral**: diferença de plantões entre quem mais e quem menos trabalhou ≤ 1 (contando o histórico).
-6. **Equilíbrio de feriados**: feriados distribuídos por igual (contador separado).
-7. **Um plantão por semana**: só repetir alguém na mesma semana se faltar gente (ex.: Carnaval).
-8. **Experiência**: cada dupla com pelo menos 1 experiente, quando possível.
-9. **Variedade**: duplas sempre variam (evitar repetir parceiro). Não há proibições nem duplas fixas.
-10. **Descanso**: evitar a mesma pessoa em semanas seguidas (com 16 de 28, nem sempre possível — minimizar).
-11. (Leve) Alternar sábado/domingo e manhã/tarde, para ninguém ficar sempre no mesmo turno.
+def inicio_da_semana(dia: date) -> date:
+    """Retorna a segunda-feira da semana de `dia`."""
 
-### Abordagem: algoritmo guloso com pontuação (greedy)
-Para cada plantão, em ordem de data:
-1. Candidatos: ativos, disponíveis na data e que ainda não trabalham nesse dia.
-2. Ordene por uma *tupla de prioridade*: (já trabalha nesta semana?, total de plantões, [se feriado] total de feriados, mais tempo desde o último plantão, aleatório).
-3. Escolha os `2 × qtd_duplas` primeiros.
-4. Forme as duplas: custo do par = **10** se nenhum dos dois é experiente **+** nº de vezes que já fizeram dupla. Escolha os pares de menor custo (dica: comece emparelhando cada experiente com um não experiente).
-5. Atualize os contadores (plantões, feriados, último plantão, pares) e siga para o próximo plantão.
+def chave_da_semana(dia: date) -> tuple[int, int]:
+    """Identifica a semana: (ano ISO, nº da semana ISO)."""
 
-**Histórico é essencial** (a geração é semanal): os contadores são sempre calculados a partir de todas as escalas **confirmadas**.
-A escala gerada é um **rascunho** até o usuário clicar em "Confirmar escala"; gerar de novo substitui o rascunho sem afetar a justiça.
+def dias_do_periodo(inicio: date, qtd_semanas: int) -> list[date]:
+    """Todos os dias de `qtd_semanas` semanas a partir da segunda-feira de `inicio`."""
 
-Usar `random.seed` configurável nos testes para resultados reproduzíveis.
+def formatar_data(dia: date) -> str:
+    """Ex.: date(2026, 11, 7) -> '07/11'."""
 
-> Evolução futura (bom exercício de faculdade): comparar com *backtracking* ou com a biblioteca OR-Tools (programação por restrições).
+def formatar_dia_completo(dia: date) -> str:
+    """Ex.: date(2026, 11, 7) -> 'Sábado, 07/11'."""
 
-### Testes mínimos (`tests/test_gerador.py`)
-- Cada plantão tem o nº de duplas configurado; ninguém em dois plantões no mesmo dia.
-- Indisponibilidades respeitadas; inativos nunca escalados.
-- Após 7 fins de semana no padrão (7 × 16 = 112 = 28 × 4), todos trabalharam exatamente 4 vezes.
-- Fim de semana + feriado (16 + 8 = 24 ≤ 28): ninguém com 2 plantões na mesma semana.
-- Quando há experientes suficientes entre os escolhidos, nenhuma dupla fica sem experiente.
-- Erro amigável quando faltar gente: "Não há pessoas suficientes no sábado 07/11 (manhã): precisa de 8, há 6."
+def ler_data(texto: str) -> date:
+    """Converte 'dd/mm/aaaa' em date. Levanta ErroEscala('Data inválida: use o formato 25/12/2026.')."""
+```
+
+### `armazenamento.py`
+```python
+VERSAO_DADOS: int = 1
+QTD_BACKUPS: int = 10
+
+def pasta_de_dados() -> Path:
+    """Pasta dos dados (%APPDATA%/PlanejadorEscala ou PLANEJADOR_PASTA_DADOS). Cria se não existir."""
+
+def carregar(pasta: Path | None = None) -> tuple[DadosDoPrograma, str | None]:
+    """Lê os dados. Retorna (dados, aviso). Arquivo inexistente -> dados padrão.
+    Arquivo corrompido -> restaura o backup válido mais recente e devolve um aviso amigável."""
+
+def salvar(dados: DadosDoPrograma, pasta: Path | None = None) -> None:
+    """Faz backup do arquivo atual, grava de forma atômica e limpa backups antigos."""
+
+def dados_para_dict(dados: DadosDoPrograma) -> dict:
+    """Converte os objetos em dicionário pronto para JSON (serialização)."""
+
+def dados_de_dict(bruto: dict) -> DadosDoPrograma:
+    """Converte o dicionário lido do JSON em objetos (desserialização). Aplica `migrar` antes."""
+
+def migrar(bruto: dict) -> dict:
+    """Atualiza dados de versões antigas para VERSAO_DADOS (hoje não faz nada além de validar)."""
+
+def exportar_copia(dados: DadosDoPrograma, destino: Path) -> None:
+    """Backup manual: grava todos os dados no arquivo escolhido pelo usuário."""
+
+def importar_copia(origem: Path) -> DadosDoPrograma:
+    """Lê uma cópia manual. Levanta ErroEscala se o arquivo não for uma cópia válida."""
+```
+
+### `historico.py`
+```python
+@dataclass
+class Contadores:
+    """Números usados para decidir quem trabalha. Sempre derivados das escalas confirmadas."""
+    carga: dict[int, int]
+    feriados: dict[int, int]
+    ultimo_plantao: dict[int, date]
+    vezes_juntos: dict[frozenset[int], int]
+    vezes_no_turno: dict[tuple[int, int, str], int]      # (id, dia_da_semana, periodo)
+    semanas_trabalhadas: dict[int, set[tuple[int, int]]] # id -> chaves de semana
+
+def calcular_contadores(dados: DadosDoPrograma) -> Contadores:
+    """Reprocessa as escalas confirmadas em ordem e aplica o piso de ausências (seção 8.3)."""
+
+def registrar_plantao(contadores: Contadores, plantao: Plantao) -> None:
+    """Soma um plantão aos contadores (usado no histórico e durante a geração)."""
+
+def esta_presente(pessoa: Pessoa, dias_com_plantao: list[date], config: Configuracao) -> bool:
+    """Diz se a pessoa conta como presente na semana (regra da seção 8.1/8.3)."""
+```
+
+### `gerador.py`
+```python
+def montar_plantoes_vazios(inicio: date, qtd_semanas: int, config: Configuracao,
+                           feriados: list[Feriado]) -> list[Plantao]:
+    """Cria os plantões (sem duplas) do período, já com feriados aplicados e em ordem."""
+
+def gerar_escala(dados: DadosDoPrograma, inicio: date, qtd_semanas: int,
+                 semente: int | None = None) -> Escala:
+    """Gera um rascunho de escala para o período. Levanta ErroEscala com mensagem amigável."""
+
+def listar_candidatos(plantao: Plantao, pessoas: list[Pessoa], escalados_no_dia: set[int]) -> list[Pessoa]:
+    """Pessoas ativas, disponíveis na data e ainda não escaladas nesse dia."""
+
+def chave_de_prioridade(pessoa: Pessoa, plantao: Plantao, contadores: Contadores,
+                        config: Configuracao, sorteio: random.Random) -> tuple:
+    """Tupla de ordenação da seção 8.4 (menor = escolhido primeiro)."""
+
+def escolher_pessoas(candidatos: list[Pessoa], plantao: Plantao, contadores: Contadores,
+                     config: Configuracao, sorteio: random.Random) -> list[Pessoa]:
+    """Escolhe 2 × qtd_duplas pessoas (prioridade, duplas fixas, modo de experiência)."""
+
+def formar_duplas(escolhidas: list[Pessoa], contadores: Contadores, config: Configuracao) -> list[Dupla]:
+    """Forma as duplas minimizando o custo (seção 8.4, passo 6)."""
+
+def custo_do_par(a: Pessoa, b: Pessoa, contadores: Contadores, config: Configuracao) -> float:
+    """Quanto pior a dupla, maior o custo. 'Nunca juntos' = infinito."""
+
+def descrever_plantao(plantao: Plantao) -> str:
+    """Texto para mensagens. Ex.: 'sábado 07/11 (manhã)'."""
+```
+
+### `edicao.py`
+```python
+def trocar_pessoa(escala: Escala, indice_plantao: int, id_sai: int, id_entra: int,
+                  dados: DadosDoPrograma) -> list[str]:
+    """Troca uma pessoa num plantão. Levanta ErroEscala se quebrar a regra 2 (mesmo dia).
+    Retorna avisos (ex.: 'Ana marcou folga neste dia') sem bloquear — o usuário decide."""
+
+def validar_escala(escala: Escala, dados: DadosDoPrograma) -> list[str]:
+    """Lista em português todas as regras quebradas na escala (vazia = tudo certo)."""
+
+def pessoas_para_troca(escala: Escala, indice_plantao: int, dados: DadosDoPrograma) -> list[tuple[Pessoa, str]]:
+    """Opções para o menu de troca: (pessoa, observação), ex.: (Bruno, 'já trabalha domingo')."""
+
+def escalas_sobrepostas(dados: DadosDoPrograma, escala: Escala) -> list[int]:
+    """Índices das escalas confirmadas com datas em comum com `escala`."""
+
+def confirmar_rascunho(dados: DadosDoPrograma) -> None:
+    """Move o rascunho para o histórico (substituindo sobrepostas — a interface pergunta antes)."""
+
+def excluir_escala(dados: DadosDoPrograma, indice: int) -> None:
+    """Remove uma escala confirmada do histórico (a interface pede confirmação antes)."""
+```
+
+### `exportar.py`
+```python
+def gerar_texto_whatsapp(escala: Escala, dados: DadosDoPrograma) -> str:
+    """Monta o texto da seção 10.4 para colar no WhatsApp."""
+```
+
+### `textos_ajuda.py`
+```python
+@dataclass
+class TextoAjuda:
+    """Explicação de uma configuração para o usuário leigo."""
+    titulo: str
+    explicacao: str
+    exemplo: str
+
+AJUDA: dict[str, TextoAjuda]   # chave = nome do campo em Configuracao (+ "backup_manual"); conteúdo na seção 11
+
+def obter_ajuda(chave: str) -> TextoAjuda:
+    """Retorna o texto de ajuda. Levanta KeyError se a chave não existir (erro de programação)."""
+```
+
+### `atualizador.py`
+```python
+NOME_DO_EXE: str = "PlanejadorEscala.exe"
+
+class ErroAtualizacao(Exception):
+    """Falha ao baixar ou verificar a atualização (nunca mostrada como traceback)."""
+
+@dataclass
+class InfoAtualizacao:
+    versao: str
+    url_exe: str
+    url_hash: str
+    notas: str
+
+def comparar_versoes(a: str, b: str) -> int:
+    """-1 se a < b, 0 se iguais, 1 se a > b. Aceita prefixo 'v' ('v1.2.0')."""
+
+def programa_esta_empacotado() -> bool:
+    """True se rodando como .exe (sys.frozen). Rodando do código-fonte, não atualiza."""
+
+def buscar_atualizacao(versao_atual: str = VERSAO, tempo_limite: float = 5.0) -> InfoAtualizacao | None:
+    """Consulta a última Release. Sem internet, sem repositório configurado ou qualquer erro -> None (silencioso)."""
+
+def calcular_sha256(caminho: Path) -> str:
+    """Hash SHA-256 do arquivo em hexadecimal (lendo em blocos)."""
+
+def baixar_e_verificar(info: InfoAtualizacao, pasta_destino: Path) -> Path:
+    """Baixa o .exe e o .sha256; compara os hashes. Diferente -> apaga o arquivo e levanta ErroAtualizacao."""
+
+def instalar_e_reiniciar(novo_exe: Path) -> None:
+    """Cria um .bat que espera o programa fechar, substitui o .exe, reabre e se apaga; executa e encerra."""
+
+def verificar_em_segundo_plano(ao_encontrar: Callable[[InfoAtualizacao], None]) -> None:
+    """Roda buscar_atualizacao numa thread daemon e chama `ao_encontrar` se houver versão nova.
+    ATENÇÃO: a interface deve repassar o callback para a thread principal com `janela.after(0, ...)`."""
+```
 
 ---
 
-## 7. Interface (UX para usuário leigo)
+## 10. Interface
 
-Princípios:
-- Janela única com **3 abas grandes**: **👥 Equipe**, **📅 Folgas**, **📋 Escala**.
-- Botões grandes, fonte ≥ 14, textos em português simples ("Gerar escala", não "Executar algoritmo").
-- Toda ação destrutiva pede confirmação ("Tem certeza que deseja remover Fulano?").
-- Mensagens de erro humanas: ❌ `KeyError: 12` → ✅ "Não há pessoas suficientes disponíveis no dia 14/11."
-- Salvamento **automático** (o usuário não precisa lembrar de salvar).
+### 10.1 Estrutura
+- `JanelaPrincipal(ctk.CTk)`: tamanho mínimo 1000×700; cabeçalho com título e botão **⚙️ Configurações**; 3 abas grandes (**👥 Equipe**, **📅 Folgas**, **📋 Escala**); rodapé com versão e aviso de atualização.
+- Cada tela é um `ctk.CTkFrame` que recebe `dados: DadosDoPrograma` e `ao_mudar: Callable[[], None]`. Toda alteração chama `ao_mudar()`, que **salva** e atualiza as outras abas (*callback*).
+- Ao abrir: se `carregar()` devolver aviso (dados recuperados), mostrá-lo.
 
-Telas:
-1. **Equipe**: lista de nomes com marcação "⭐ Experiente"; botões "Adicionar", "Editar", "Desativar".
-2. **Folgas**: escolher pessoa → marcar datas em que não pode.
-3. **Escala**:
-   - Escolher período: **"Esta semana"**, **"Próxima semana"** ou **"Próximas 2 semanas"**.
-   - Feriados do período + botão "Adicionar feriado" (data, nome, turnos e nº de duplas — já preenchido com o padrão).
-   - Botão **"Gerar escala"** → resultado agrupado por dia e turno → permitir trocar pessoas manualmente.
-   - Botões **"✅ Confirmar escala"** (passa a contar no histórico) e **"📋 Copiar para WhatsApp"**.
-   - Botão discreto "⚙️ Turnos" para mudar os turnos do fim de semana (uso raro).
-4. Rodapé: versão do programa e aviso de atualização quando houver.
+### 10.2 `componentes.py`
+- `BotaoGrande(master, texto, comando)` — fonte 16, altura 44.
+- `CampoComAjuda(master, chave_ajuda, widget)` — título + controle + explicação + exemplo em cinza (de `textos_ajuda`).
+- `CalendarioMensal(master, datas_marcadas: set[date], ao_clicar: Callable[[date], None])` — grade 7×6 de botões, setas ◀ ▶ de mês, dias marcados em vermelho.
+- `perguntar_sim_nao(titulo, texto) -> bool`, `mostrar_erro(texto)`, `mostrar_info(texto)`.
 
-Formato do texto para WhatsApp (`*texto*` vira **negrito** no WhatsApp):
+### 10.3 Telas
+1. **👥 Equipe**: lista (nome, ⭐ se experiente, "inativo" em cinza). Botões: **Adicionar**, **Editar** (nome/experiente), **Desativar/Reativar** (reativar ajusta `data_entrada` para hoje). Remover definitivamente só em "Editar", com confirmação, e só se a pessoa não estiver em escalas confirmadas.
+2. **📅 Folgas**: lista de pessoas à esquerda; `CalendarioMensal` à direita (clicar marca/desmarca). Botão **"Marcar período (férias)"**: de/até.
+3. **📋 Escala**:
+   - Período: **"Esta semana"** / **"Próxima semana"** / **"Escolher data…"**; nº de semanas (padrão = `semanas_por_geracao`).
+   - Feriados do período (lista) + **"Adicionar feriado"** (`janela_feriado.py`: data, nome, períodos e duplas pré-preenchidos com o padrão).
+   - **"Gerar escala"** → cartões por plantão ("Sábado, 07/11 — Manhã"), cada dupla com dois menus de pessoa para troca (`pessoas_para_troca`). Avisos em amarelo.
+   - **"✅ Confirmar escala"** (pergunta se substitui escala já confirmada no mesmo período).
+   - **"📋 Copiar para WhatsApp"** (`clipboard_clear` + `clipboard_append`; se for rascunho, oferecer confirmar antes).
+   - **"📜 Escalas anteriores"** → `janela_historico.py`: listar, abrir, trocar pessoas, copiar, excluir (com confirmação).
+4. **⚙️ Configurações** (`janela_configuracoes.py`): seções **Turnos**, **Feriados**, **Duplas**, **Escala**, **Mensagem** e **Opções avançadas** (recolhida). Todo campo usa `CampoComAjuda`. Botões **Salvar**, **Cancelar**, **Restaurar padrão**. Validar (nº de duplas ≥ 1; avisar se 2 × duplas de um dia > pessoas ativas).
+
+### 10.4 Texto para WhatsApp (formato exato)
 ```
 📋 *ESCALA DE PLANTÃO*
 
 📅 *Sábado, 07/11 — Manhã*
 1. Ana e Bruno
 2. Carla e Diego
-...
+3. Elisa e Fábio
+4. Gabi e Hugo
 
-📅 *Domingo, 08/11 — Tarde*
+📅 *Sexta, 20/11 — Manhã (Feriado: Consciência Negra)*
 1. ...
 ```
-Copiar para a área de transferência usa o próprio Tkinter (`clipboard_append`) — sem biblioteca extra.
+Título = `titulo_mensagem`; `texto_final_mensagem`, se não vazio, vai ao fim após uma linha em branco. Período com inicial maiúscula.
 
 ---
 
-## 8. Sistema de atualização (`atualizador.py`)
+## 11. Textos de ajuda das configurações (`textos_ajuda.py`)
 
-Fluxo usando **GitHub Releases**:
+Linguagem simples, sem termos técnicos. Conteúdo mínimo (a IA pode melhorar a redação, mantendo o sentido):
 
+| Chave | Título | Explicação | Exemplo |
+|---|---|---|---|
+| `turnos` | Turnos da semana | Quais dias e períodos têm plantão toda semana, e quantas duplas em cada um. | "Sábado — manhã — 4 duplas" = 8 pessoas trabalhando no sábado de manhã. |
+| `periodos` | Nomes dos períodos | Os nomes que aparecem na escala e na mensagem, na ordem do dia. | Adicione "noite" se houver plantão noturno. |
+| `feriados_ativos` | Plantão em feriados | Ligado: os feriados cadastrados entram na escala. | Desligado: o Natal fica sem ninguém escalado. |
+| `feriado_periodos_padrao` | Padrão para feriados | Como um feriado novo já vem preenchido (dá para mudar em cada feriado). | "Manhã — 4 duplas": ao adicionar Finados, já vem assim. |
+| `modo_experiencia` | Experiência na dupla | **Preferência**: tenta colocar 1 experiente por dupla. **Obrigatória**: nunca monta dupla sem experiente. **Ignorar**: não leva em conta. | Com "Obrigatória", se faltar gente experiente no sábado, o programa avisa em vez de montar a escala. |
+| `semanas_por_geracao` | Semanas por vez | Quantas semanas o botão "Gerar escala" monta de uma vez. | 2 = escala quinzenal. |
+| `titulo_mensagem` | Título da mensagem | Primeira linha do texto do WhatsApp. Texto entre \*asteriscos\* fica em **negrito**. | \*ESCALA DE PLANTÃO — NOVEMBRO\* |
+| `texto_final_mensagem` | Texto final | Aparece no fim da mensagem (opcional). | "Trocas: falar com a coordenação." |
+| `evitar_semanas_seguidas` | Evitar semanas seguidas | Tenta dar folga a quem trabalhou na semana anterior. | Com 28 pessoas e 16 vagas, algumas repetições são inevitáveis; o programa escolhe quem descansou mais. |
+| `compensar_ausencias` | Compensar ausências | **Desligado (recomendado)**: quem volta de férias entra empatado com quem menos trabalhou. **Ligado**: quem se ausentou "fica devendo" e trabalha mais até igualar. | Ana tirou 1 mês de férias. Ligado: ela será escalada quase toda semana ao voltar. |
+| `nunca_juntos` | Nunca juntos | Pessoas que não devem formar dupla. Podem trabalhar no mesmo dia, em duplas diferentes. | Ana ✕ Bruno. |
+| `sempre_juntos` | Duplas fixas | Pessoas que sempre trabalham juntas. Se uma estiver de folga, a outra trabalha com outra pessoa. | Carla + Diego. |
+| `backup_manual` | Cópia de segurança | "Salvar cópia" guarda todos os dados num arquivo (pendrive, e-mail). "Restaurar" troca os dados atuais pelos da cópia. | Útil ao trocar de computador. |
+
+---
+
+## 12. Atualização e publicação
+
+### 12.1 Fluxo no programa
 ```
-Programa abre
-   └─> (em segundo plano) GET https://api.github.com/repos/<usuario>/<repo>/releases/latest
-         └─> compara tag_name (ex.: "v1.2.0") com VERSAO local
-               ├─ igual/menor → nada acontece
-               └─ maior → mostra: "Nova versão disponível! Deseja atualizar agora?"
-                     └─ Sim → baixa o .exe da Release para pasta temporária
-                             → cria um pequeno script .bat que:
-                                  1. espera o programa fechar
-                                  2. substitui o .exe antigo pelo novo
-                                  3. abre o programa novamente
-                             → fecha o programa
+Abre o programa → (thread) GET https://api.github.com/repos/<REPOSITORIO_GITHUB>/releases/latest
+  → tag_name > VERSAO?  não → nada
+                         sim → "Nova versão X disponível! Deseja atualizar agora?"
+                                 → baixa PlanejadorEscala.exe + PlanejadorEscala.exe.sha256 (%TEMP%)
+                                 → SHA-256 confere? não → apaga, registra no log, não incomoda o usuário
+                                                    sim → .bat substitui o .exe e reabre o programa
 ```
+- Só atualiza se `programa_esta_empacotado()`. Sem internet → silencioso. HTTPS sempre. Nada de token.
+- Sem permissão de escrita na pasta do `.exe` → mensagem: "Mova o programa para a pasta Documentos ou Área de Trabalho para receber atualizações."
+- Dados ficam em `%APPDATA%` → atualizar nunca apaga dados.
 
-Detalhes:
-- Repositório **público** (a API funciona sem token). Nunca colocar tokens no código.
-- Sem internet → falhar silenciosamente (não incomodar o usuário).
-- Verificação em *thread* separada para não travar a janela (explicar o conceito de *threads* ao implementar).
-- Versionamento semântico: `MAIOR.MENOR.CORREÇÃO` (explicar ao implementar).
-- O arquivo de dados fica em `%APPDATA%`, então atualizar **não apaga** os dados.
+### 12.2 Empacotamento
+```powershell
+pyinstaller --onefile --windowed --name PlanejadorEscala --collect-data customtkinter iniciar.py
+```
+`iniciar.py` (raiz) existe porque `main.py` usa imports `src.escala...`.
 
-### Como o desenvolvedor publica uma atualização
-1. Altera o código e muda `VERSAO` em `versao.py`.
-2. `git commit` e `git push`.
-3. `git tag v1.2.0` e `git push --tags`.
-4. O GitHub Actions (`release.yml`) roda os testes, gera o `.exe` com PyInstaller e cria a Release com o `.exe` anexado.
-5. Os usuários recebem o aviso na próxima vez que abrirem o programa.
+### 12.3 GitHub Actions
+- `testes.yml`: em todo push/PR → Windows, Python 3.12, `pip install -r requirements-dev.txt`, `pytest`.
+- `release.yml`: em tag `v*` → testes → conferir que a tag == `v` + `VERSAO` → PyInstaller → `Get-FileHash -Algorithm SHA256` → arquivo `PlanejadorEscala.exe.sha256` (só o hash, minúsculo) → publicar Release com os 2 arquivos (`softprops/action-gh-release`).
 
-> Aviso: o Windows SmartScreen pode alertar "aplicativo não reconhecido" em `.exe` sem assinatura digital. Documentar no manual do usuário: "Mais informações → Executar assim mesmo".
+### 12.4 Como o desenvolvedor publica
+1. Altera o código e `VERSAO` em `versao.py` (semântico: MAIOR.MENOR.CORREÇÃO).
+2. `git commit` → `git push`.
+3. `git tag v1.2.0` → `git push --tags`.
+4. Actions testa, gera e publica. Usuários recebem o aviso ao abrir o programa.
 
----
-
-## 9. Roteiro de desenvolvimento (fases)
-
-Implementar **uma fase por vez**, com explicação didática ao final de cada uma.
-
-| Fase | Entrega | Conceitos que o desenvolvedor aprende |
-|---|---|---|
-| 0 | Ambiente: Python, venv, Git, estrutura de pastas, `requirements.txt` | Ambientes virtuais, gerenciador de pacotes, controle de versão |
-| 1 | `modelos.py` + `armazenamento.py` + testes | Classes, `dataclasses`, JSON, leitura/escrita de arquivos |
-| 2 | `gerador.py` + testes (sem interface) | Algoritmos gulosos, ordenação, conjuntos, testes automatizados |
-| 3 | Interface: aba Equipe | GUI, eventos, *callbacks* |
-| 4 | Interface: abas Folgas e Escala | Componentes, integração lógica ↔ interface |
-| 5 | Texto para WhatsApp + copiar para a área de transferência | Formatação de strings, f-strings, datas |
-| 6 | Gerar `.exe` com PyInstaller (manual) | Empacotamento, distribuição |
-| 7 | `atualizador.py` | HTTP, APIs REST, *threads*, versionamento |
-| 8 | GitHub Actions para Releases automáticas | CI/CD |
-| 9 | Manual do usuário + polimento | Documentação, UX |
+> Segurança: o desenvolvedor deve ativar **verificação em duas etapas (2FA)** no GitHub.
+> O Windows SmartScreen/antivírus pode alertar sobre `.exe` sem assinatura — documentar no manual ("Mais informações → Executar assim mesmo").
 
 ---
 
-## 10. Comandos úteis (referência)
+## 13. Fases (uma por vez) e critérios de "pronto"
+
+| Fase | Entrega | Pronto quando | Conceitos a ensinar |
+|---|---|---|---|
+| 0 ✅ | Ambiente, Git, estrutura, janela de teste | Concluída | venv, pip, Git, pacotes |
+| 1 | `modelos.py`, `datas.py`, `armazenamento.py` + testes | Ida e volta JSON sem perda; backup (máx. 10); salvamento atômico; recuperação de arquivo corrompido; testes verdes | dataclasses, type hints, JSON, serialização, pathlib, exceções |
+| 2 | `historico.py`, `gerador.py`, `edicao.py` + testes | Todos os testes da seção 14 (gerador/histórico/edição) verdes | algoritmo guloso, ordenação por tupla, conjuntos, dicionários, deepcopy, fonte única da verdade |
+| 3 | `exportar.py`, `textos_ajuda.py` + testes | Texto idêntico ao da seção 10.4; toda configuração tem ajuda | f-strings, formatação |
+| 4 | Interface base + `componentes.py` + aba Equipe | Adicionar/editar/desativar persiste após fechar e abrir | GUI, eventos, callbacks, laço de eventos |
+| 5 | Aba Folgas + `CalendarioMensal` | Folgas marcadas aparecem e são respeitadas na geração | layout em grade, laços |
+| 6 | Aba Escala + feriado + histórico + copiar | Gerar → trocar → confirmar → copiar funcionando ponta a ponta | integração lógica ↔ interface, área de transferência |
+| 7 | ⚙️ Configurações com ajuda | Todas as opções da seção 4.2 alteram o comportamento; "Restaurar padrão" funciona | parametrização, validação de entrada |
+| 8 | `iniciar.py` + `.exe` manual | `.exe` abre num PC sem Python | empacotamento |
+| 9 | `atualizador.py` + testes | Testes com monkeypatch verdes; atualização real testada com 2 versões | HTTP, API REST, threads, hash, versionamento semântico |
+| 10 | GitHub Actions | Tag gera Release com `.exe` e `.sha256` | CI/CD |
+| 11 | `MANUAL_DO_USUARIO.md` + polimento | Usuário leigo consegue usar só com o manual | documentação, UX |
+
+---
+
+## 14. Testes obrigatórios
+
+`conftest.py`: fixture `equipe_28` (28 pessoas, 10 experientes, `data_entrada` antiga), `dados_padrao`, `pasta_temporaria` (via `tmp_path` + `PLANEJADOR_PASTA_DADOS`). Sempre usar `semente` fixa.
+
+**datas / modelos**: `inicio_da_semana`, `formatar_dia_completo` ("Sábado, 07/11"), `ler_data` inválida → `ErroEscala`; `adicionar_pessoa` com nome repetido → `ErroEscala`.
+
+**armazenamento**: ida e volta preserva tudo; arquivo inexistente → padrão; corrompido → recupera backup e retorna aviso; nunca mais de 10 backups; `importar_copia` inválida → `ErroEscala`.
+
+**historico**: rascunho não conta; editar escala confirmada muda contadores; pessoa nova entra com a menor carga; volta de férias entra com a menor carga (padrão); com `compensar_ausencias=True` mantém a carga baixa.
+
+**gerador**:
+- Nº de duplas correto; ninguém 2× no mesmo dia; indisponíveis e inativos nunca escalados.
+- 7 semanas no padrão → todos com exatamente 4 plantões (7 × 16 = 112 = 28 × 4).
+- Semana com feriado (16 + 8 = 24 ≤ 28) → ninguém com 2 plantões na semana.
+- Feriado num sábado substitui os turnos do sábado.
+- "Preferência" com experientes suficientes entre os escolhidos → toda dupla tem experiente.
+- "Obrigatória" garante; impossível → `ErroEscala`.
+- "Nunca juntos" respeitado; duplas fixas juntas quando ambos disponíveis.
+- Falta de gente → mensagem exata: "Não há pessoas suficientes no sábado 07/11 (manhã): precisa de 8, há 6."
+- Mesma semente → mesma escala.
+
+**edicao**: troca para alguém já escalado no dia → `ErroEscala`; troca para alguém de folga → aviso; `confirmar_rascunho` substitui sobrepostas.
+
+**exportar**: texto exato da seção 10.4 (com e sem feriado e texto final).
+
+**textos_ajuda**: todo campo de `Configuracao` tem ajuda com título, explicação e exemplo não vazios.
+
+**atualizador**: `comparar_versoes` ("v1.10.0" > "1.9.9"); SHA-256 diferente → `ErroAtualizacao` e arquivo apagado; erro de rede → `None`; repositório vazio → `None`.
+
+---
+
+## 15. Comandos
 
 ```powershell
-# Criar e ativar ambiente virtual
 python -m venv .venv
 .venv\Scripts\Activate.ps1
-
-# Instalar dependências (desenvolvimento inclui as do programa)
 pip install -r requirements-dev.txt
-
-# Rodar o programa
-python -m src.escala.main
-
-# Rodar testes
-pytest
-
-# Gerar o .exe
-pyinstaller --onefile --windowed --name "PlanejadorEscala" src/escala/main.py
+python -m src.escala.main          # rodar
+pytest                             # testar
+pyinstaller --onefile --windowed --name PlanejadorEscala --collect-data customtkinter iniciar.py
 ```
 
 ---
 
-## 11. Decisões de negócio (confirmadas em 04/11/2026)
+## 16. Status do projeto
 
-| Pergunta | Decisão |
+| Item | Situação |
 |---|---|
-| As duplas têm funções diferentes? | Não, todas fazem a mesma coisa |
-| Duração do plantão | Meio período (manhã ou tarde). Padrão: 4 duplas sábado manhã + 4 duplas domingo tarde. Configurável |
-| Restrições de dupla | Nenhuma proibição; duplas sempre variam (sem duplas fixas) |
-| Experiência | Preferível 1 experiente por dupla, mas não obrigatório |
-| Feriados | Entram na escala; usuário escolhe turnos e nº de duplas (padrão: 4) |
-| Período gerado | Semanal; às vezes quinzenal |
-| Divulgação | WhatsApp (sem exportação para Excel) |
+| Fase atual | **Fase 0 concluída** → próxima: **Fase 1** |
+| Repositório GitHub | Ainda não criado (`REPOSITORIO_GITHUB` vazio) |
+| Último commit relevante | Desenho da arquitetura (este arquivo) |

@@ -34,3 +34,24 @@ a estrutura de pastas `src/escala` e `tests`, uma janela de teste e o primeiro t
 - **Regras obrigatórias × desejáveis** (restrições *rígidas* × *flexíveis*): as primeiras nunca podem ser quebradas; as outras o algoritmo tenta otimizar.
 - **Configuração × código fixo:** deixar valores que podem mudar (turnos, nº de duplas) como dados, não "chumbados" no código.
 - **Função de custo:** dar uma nota a cada opção (ex.: custo de um par) e escolher a menor.
+
+## 04/11/2026 — Arquitetura final (debate "advogado do diabo")
+
+**O que mudou:** o `AGENTS.md` foi reescrito como instrução para uma IA programadora: assinaturas de funções,
+formato do JSON, algoritmo detalhado, fases com critério de "pronto" e testes obrigatórios.
+
+**Decisões do debate:**
+- Pessoa nova/volta de férias **não compensa**: entra empatada com quem menos trabalhou (regra do "piso").
+- Escalas confirmadas podem ser editadas; os contadores são recalculados do histórico.
+- Uma só usuária → sem login. Risco real é corromper o arquivo → **salvamento atômico** + recuperação por backup.
+- Atualização verificada por **SHA-256**.
+- Tudo configurável, com **explicação + exemplo** em cada opção; padrões = respostas do desenvolvedor.
+
+**Conceitos aprendidos:**
+- **Pontos cegos / advogado do diabo:** procurar falhas antes de programar é mais barato que corrigir depois.
+- **Fonte única da verdade:** não guardar a mesma informação em dois lugares (contadores são calculados, não salvos).
+- **Salvamento atômico:** gravar num arquivo temporário e trocar de uma vez, para nunca ficar "pela metade".
+- **Hash (SHA-256):** "impressão digital" de um arquivo; se um byte mudar, o hash muda.
+- **Parametrização:** regras viram dados configuráveis.
+- **YAGNI:** não construir o que ninguém precisa ainda.
+- **Contrato (assinaturas):** definir entradas/saídas das funções antes de implementar.

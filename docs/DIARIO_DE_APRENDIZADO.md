@@ -92,3 +92,22 @@ e `janela_justica.py` na interface).
 - **Salvamento atômico:** técnica de gravar em um arquivo temporário e renomear de uma vez só (`os.replace`), evitando corromper dados se o computador desligar no meio.
 - **Pathlib:** módulo moderno do Python para manipular caminhos de pastas e arquivos de forma segura e independente de sistema operacional.
 - **Exceções customizadas:** classes de erro próprias (como `ErroEscala`) usadas para separar erros esperados de regras de negócio de falhas inesperadas de programação.
+
+## 04/11/2026 — Fase 2: Histórico, Algoritmo Gerador e Edição
+
+**O que mudou:** implementados os módulos centrais da lógica da escala: contadores de justiça e regra do piso (`historico.py`), algoritmo guloso com ordenação por tupla e formação de duplas (`gerador.py`), e funções de validação, substituição e confirmação manual (`edicao.py`), totalizando 58 testes automatizados 100% verdes.
+
+**Decisões:**
+- Fonte única da verdade: contadores de justiça nunca são gravados no JSON, sendo sempre recalculados a partir das escalas confirmadas.
+- Regra do piso ("não compensar"): pessoas recém-adicionadas ou que voltam de férias sobem automaticamente para a menor carga entre os presentes da semana.
+- Algoritmo guloso baseado em ordenação por tupla lexicográfica de critérios (evita dois plantões na semana, equilibra carga acumulada, folgas recentes e turnos).
+- Formação de duplas guiada por função de custo, garantindo que duplas fixas e pessoas experientes sejam pareadas antes de combinações residuais.
+- Validação estrita na troca de pessoas (impede trabalhar no mesmo dia), permitindo trocas com folgas mediante avisos informativos.
+
+**Conceitos aprendidos:**
+- **Algoritmo guloso (Greedy):** técnica que toma a melhor decisão local a cada etapa (escolhendo as pessoas de maior prioridade para cada plantão), gerando um resultado global eficiente e justo.
+- **Ordenação por tupla (ordem lexicográfica):** o Python compara tuplas elemento por elemento; se o primeiro empatar, avalia o segundo, permitindo encadear múltiplos critérios de desempate de forma elegante.
+- **Conjuntos (sets):** estruturas de dados que garantem elementos únicos e consultas instantâneas $O(1)$, ideais para verificar indisponibilidades e presenças.
+- **Dicionários (dicts):** estruturas de chave-valor usadas para contadores acumulados e busca rápida de registros.
+- **Deepcopy:** clonagem profunda de estruturas em memória, usada para simular o avanço dos contadores durante a geração sem alterar os dados reais até o rascunho ser confirmado.
+- **Fonte única da verdade:** princípio de arquitetura em que dados derivados (como o quadro de justiça) são sempre calculados a partir dos dados primários (escalas confirmadas), evitando inconsistências.

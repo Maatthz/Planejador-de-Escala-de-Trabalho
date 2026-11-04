@@ -55,3 +55,21 @@ formato do JSON, algoritmo detalhado, fases com critério de "pronto" e testes o
 - **Parametrização:** regras viram dados configuráveis.
 - **YAGNI:** não construir o que ninguém precisa ainda.
 - **Contrato (assinaturas):** definir entradas/saídas das funções antes de implementar.
+
+## 04/11/2026 — Arquitetura de Frontend (UI/UX) e Quadro de Justiça
+
+**O que mudou:** a seção 10 do `AGENTS.md` foi expandida com regras rígidas de arquitetura de Frontend,
+Design System e usabilidade (UI/UX), e foi adicionado o **📊 Quadro de justiça** (`quadro_de_justica` em `historico.py`
+e `janela_justica.py` na interface).
+
+**Decisões:**
+- **Fluxo unidirecional de estado** na interface: `DadosDoPrograma` é a única fonte de verdade; as telas nunca guardam estado duplicado.
+- **Design System com tokens visuais** em `componentes.py`: paleta semântica (azul = ação principal, verde = confirmar/copiar, cinza = secundário, vermelho = destrutivo, amarelo = aviso), tipografia `Segoe UI` (mínimo 14px para corpo) e espaçamento padronizado.
+- **Quadro de justiça**: mostra a ordem atual da fila, quantos plantões/feriados cada pessoa realmente fez, a data do último plantão e se entrou/voltou empatada pelo piso.
+
+**Conceitos aprendidos:**
+- **Design System / Tokens visuais:** centralizar cores, fontes e tamanhos em constantes para manter consistência visual e facilitar mudanças.
+- **Fluxo unidirecional de estado (MVC / Flux):** Dados → Tela → Ação → Lógica → Salvar → Atualizar tela; evita que a tela mostre uma coisa e o arquivo tenha outra.
+- **Hierarquia visual e cores semânticas:** destacar apenas 1 botão principal por área para guiar o olhar do usuário.
+- **Lei de Fitts:** quanto maior e mais próximo o botão, mais fácil e rápido é clicar nele (importante para usuários leigos).
+- **Heurísticas de Nielsen (Visibilidade do status e Estados vazios):** o programa sempre informa o que está acontecendo (ex.: faixa "Rascunho", botão "✅ Copiado!", textos explicativos quando uma lista está vazia).

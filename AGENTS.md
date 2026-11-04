@@ -184,6 +184,7 @@ Planejador de Escala de Trabalho/
 │           ├── tela_folgas.py           # Aba 📅 Folgas
 │           ├── tela_escala.py           # Aba 📋 Escala
 │           ├── janela_feriado.py        # Diálogo "Adicionar feriado"
+│           ├── janela_justica.py        # Diálogo "📊 Quadro de justiça" (fila e contadores)
 │           ├── janela_historico.py      # Escalas anteriores (ver/editar/excluir)
 │           └── janela_configuracoes.py  # ⚙️ Configurações (com ajuda)
 ├── tests/
@@ -513,8 +514,21 @@ class Contadores:
     vezes_no_turno: dict[tuple[int, int, str], int]      # (id, dia_da_semana, periodo)
     semanas_trabalhadas: dict[int, set[tuple[int, int]]] # id -> chaves de semana
 
+@dataclass
+class ResumoJustica:
+    """Linha do quadro de justiça para mostrar ao usuário."""
+    posicao: int                 # 1 = primeiro da fila (maior prioridade)
+    pessoa: Pessoa
+    plantoes_reais: int          # quantos plantões realmente fez nas escalas confirmadas
+    carga_justica: int           # contador usado pelo algoritmo (inclui o piso de entrada/férias)
+    feriados_trabalhados: int    # quantos feriados realmente trabalhou
+    ultimo_plantao: date | None  # data do último plantão confirmado (ou None)
+
 def calcular_contadores(dados: DadosDoPrograma) -> Contadores:
     """Reprocessa as escalas confirmadas em ordem e aplica o piso de ausências (seção 8.3)."""
+
+def quadro_de_justica(dados: DadosDoPrograma) -> list[ResumoJustica]:
+    """Retorna as pessoas ativas ordenadas por prioridade (quem está na frente da fila vem primeiro)."""
 
 def registrar_plantao(contadores: Contadores, plantao: Plantao) -> None:
     """Soma um plantão aos contadores (usado no histórico e durante a geração)."""
@@ -580,7 +594,7 @@ def excluir_escala(dados: DadosDoPrograma, indice: int) -> None:
 ### `exportar.py`
 ```python
 def gerar_texto_whatsapp(escala: Escala, dados: DadosDoPrograma) -> str:
-    """Monta o texto da seção 10.4 para colar no WhatsApp."""
+    """Monta o texto da seção 10.6 para colar no WhatsApp."""
 ```
 
 ### `textos_ajuda.py`
@@ -637,32 +651,92 @@ def verificar_em_segundo_plano(ao_encontrar: Callable[[InfoAtualizacao], None]) 
 
 ---
 
-## 10. Interface
+## 10. Arquitetura de Frontend e Guia de UI/UX
 
-### 10.1 Estrutura
-- `JanelaPrincipal(ctk.CTk)`: tamanho mínimo 1000×700; cabeçalho com título e botão **⚙️ Configurações**; 3 abas grandes (**👥 Equipe**, **📅 Folgas**, **📋 Escala**); rodapé com versão e aviso de atualização.
-- Cada tela é um `ctk.CTkFrame` que recebe `dados: DadosDoPrograma` e `ao_mudar: Callable[[], None]`. Toda alteração chama `ao_mudar()`, que **salva** e atualiza as outras abas (*callback*).
-- Ao abrir: se `carregar()` devolver aviso (dados recuperados), mostrá-lo.
+### 10.1 Padrão arquitetural (Fluxo Unidirecional de Estado)
+A interface segue uma separação rigorosa entre **estado** e **visualização** (inspirada em MVC / Flux):
 
-### 10.2 `componentes.py`
-- `BotaoGrande(master, texto, comando)` — fonte 16, altura 44.
-- `CampoComAjuda(master, chave_ajuda, widget)` — título + controle + explicação + exemplo em cinza (de `textos_ajuda`).
+```
+[DadosDoPrograma] ──lê──► [Tela: atualizar_tela()] ──clique──► [Camada de Lógica]
+        ▲                                                              │
+        └────────── salva (armazenamento.py) ◄── ao_mudar() ◄──────────┘
+```
+
+1. **Fonte única de estado**: `JanelaPrincipal` guarda a única instância de `DadosDoPrograma` e a passa para as telas.
+2. **Proibido guardar estado duplicado na tela**: widgets não são fonte de verdade. Toda tela tem um método `atualizar_tela() -> None` que reconstrói/atualiza os elementos visuais a partir de `self.dados`.
+3. **Fluxo de toda ação do usuário**:
+   - O botão chama um método da tela.
+   - O método chama a função da **camada de lógica** dentro de `try ... except ErroEscala as erro:`.
+   - Se levantar `ErroEscala`, chama `mostrar_erro(str(erro))` e **interrompe** (nada é salvo).
+   - Se der certo, chama `self.ao_mudar()`, que executa `armazenamento.salvar(self.dados)` e chama `atualizar_tela()` nas abas.
+4. **Proibido na interface**: fazer contas de justiça, sortear pessoas, editar listas de duplas diretamente sem `edicao.py`, ou ler/gravar arquivos JSON sem `armazenamento.py`.
+
+### 10.2 Design System e Tokens Visuais (`componentes.py`)
+Para a interface parecer limpa, profissional e fácil para uma pessoa leiga, **todas** as telas devem usar as constantes abaixo (proibido espalhar cores ou tamanhos mágicos pelas telas):
+
+- **Modo de aparência fixo**: `ctk.set_appearance_mode("light")` (modo claro). É mais legível em ambientes iluminados e familiar para quem usa papel, WhatsApp Web e Word.
+- **Paleta semântica** (cada cor tem um significado único):
+  | Token | Cor (Hex) | Uso obrigatório |
+  |---|---|---|
+  | `COR_FUNDO` | `#F8FAFC` | Fundo geral da janela |
+  | `COR_CARTAO` | `#FFFFFF` | Fundo dos cartões e painéis (borda `#E2E8F0`, `corner_radius=10`) |
+  | `COR_PRIMARIA` | `#1D4ED8` (hover `#1E40AF`) | **Apenas** a ação principal da tela ("Gerar escala", "+ Adicionar pessoa", "Salvar") |
+  | `COR_SUCESSO` | `#15803D` (hover `#166534`) | Conclusão positiva ("✅ Confirmar escala", "📋 Copiar para WhatsApp") |
+  | `COR_SECUNDARIA` | `#E2E8F0` (texto `#1E293B`, hover `#CBD5E1`) | Ações auxiliares ("Editar", "📊 Quadro de justiça", "📜 Escalas anteriores") |
+  | `COR_PERIGO` | `#B91C1C` (hover `#991B1B`) | Ações destrutivas ("Desativar", "Excluir", "Restaurar padrão") |
+  | `COR_AVISO_FUNDO` / `COR_AVISO_TEXTO` | `#FEF3C7` / `#92400E` | Faixas de aviso (rascunho não confirmado, troca com observação) |
+  | `COR_TEXTO` / `COR_TEXTO_SUAVE` | `#0F172A` / `#475569` | Texto principal / textos de ajuda, exemplos e inativos |
+- **Tipografia** (`Segoe UI`):
+  - `FONTE_TITULO = ("Segoe UI", 20, "bold")` — título da aba/janela.
+  - `FONTE_SUBTITULO = ("Segoe UI", 16, "bold")` — título de cartão (ex.: "Sábado, 07/11 — Manhã").
+  - `FONTE_CORPO = ("Segoe UI", 15)` — listas, nomes, campos e botões secundários (nunca menor que 14).
+  - `FONTE_BOTAO = ("Segoe UI", 16, "bold")` — botões principais.
+  - `FONTE_AJUDA = ("Segoe UI", 13)` — explicações e exemplos abaixo dos campos.
+- **Espaçamento e Lei de Fitts**:
+  - Margem externa de cada aba: `padx=20, pady=20`.
+  - Espaço entre cartões: `pady=8` a `12`; preenchimento interno do cartão: `padx=16, pady=16`.
+  - Áreas clicáveis grandes: botões principais com `height=44`, secundários e linhas clicáveis com `height=36`.
+  - No máximo **1 botão azul (`COR_PRIMARIA`)** ou verde (`COR_SUCESSO`) em destaque por grupo, para o olho do usuário saber imediatamente onde clicar.
+
+### 10.3 Regras de UX e Usabilidade (Heurísticas de Nielsen)
+1. **Estados vazios orientativos (*Empty States*)**: nunca mostrar um quadro em branco sem explicação.
+   - Equipe sem ninguém: *"Nenhuma pessoa cadastrada ainda. Clique em '+ Adicionar pessoa' para começar."*
+   - Escala vazia: *"Escolha o período acima e clique em 'Gerar escala'."*
+   - Histórico vazio: *"Nenhuma escala foi confirmada ainda."*
+2. **Visibilidade do status do sistema**:
+   - Escala em **rascunho**: faixa amarela no topo da escala: *"⚠️ Rascunho — esta escala ainda não está valendo. Clique em 'Confirmar escala' para salvar no histórico."*
+   - Escala **confirmada**: faixa verde discreta: *"✅ Escala confirmada e salva no histórico."*
+   - Botão **Copiar para WhatsApp**: ao clicar, muda o próprio texto para *"✅ Copiado!"* por 2 segundos (`after(2000, ...)`) — feedback imediato sem abrir pop-up desnecessário.
+3. **Layout responsivo e janelas modais**:
+   - Usar `grid` com `grid_columnconfigure` / `grid_rowconfigure(..., weight=1)` para a área principal crescer quando o usuário maximizar a janela.
+   - Listas que podem crescer (equipe, plantões, configurações, quadro de justiça) ficam sempre dentro de `ctk.CTkScrollableFrame`.
+   - Toda janela secundária (`CTkToplevel`) deve ser **modal** (`transient(pai)`, `grab_set()`, `focus()`), abrir centralizada sobre a janela principal e fechar com a tecla `Esc`.
+
+### 10.4 `componentes.py`
+- Constantes de cores e fontes da seção 10.2.
+- `BotaoGrande(master, texto, comando, variante="primaria")` — variantes `"primaria"`, `"sucesso"`, `"secundaria"`, `"perigo"`.
+- `CartaoFrame(master)` — `CTkFrame` branco com borda e cantos arredondados.
+- `CampoComAjuda(master, chave_ajuda, widget)` — título + controle + explicação + exemplo em `COR_TEXTO_SUAVE` (de `textos_ajuda`).
 - `CalendarioMensal(master, datas_marcadas: set[date], ao_clicar: Callable[[date], None])` — grade 7×6 de botões, setas ◀ ▶ de mês, dias marcados em vermelho.
+- `configurar_janela_modal(janela: ctk.CTkToplevel, pai: ctk.CTk, titulo: str, largura: int, altura: int) -> None`.
 - `perguntar_sim_nao(titulo, texto) -> bool`, `mostrar_erro(texto)`, `mostrar_info(texto)`.
 
-### 10.3 Telas
-1. **👥 Equipe**: lista (nome, ⭐ se experiente, "inativo" em cinza). Botões: **Adicionar**, **Editar** (nome/experiente), **Desativar/Reativar** (reativar ajusta `data_entrada` para hoje). Remover definitivamente só em "Editar", com confirmação, e só se a pessoa não estiver em escalas confirmadas.
-2. **📅 Folgas**: lista de pessoas à esquerda; `CalendarioMensal` à direita (clicar marca/desmarca). Botão **"Marcar período (férias)"**: de/até.
-3. **📋 Escala**:
-   - Período: **"Esta semana"** / **"Próxima semana"** / **"Escolher data…"**; nº de semanas (padrão = `semanas_por_geracao`).
-   - Feriados do período (lista) + **"Adicionar feriado"** (`janela_feriado.py`: data, nome, períodos e duplas pré-preenchidos com o padrão).
-   - **"Gerar escala"** → cartões por plantão ("Sábado, 07/11 — Manhã"), cada dupla com dois menus de pessoa para troca (`pessoas_para_troca`). Avisos em amarelo.
-   - **"✅ Confirmar escala"** (pergunta se substitui escala já confirmada no mesmo período).
-   - **"📋 Copiar para WhatsApp"** (`clipboard_clear` + `clipboard_append`; se for rascunho, oferecer confirmar antes).
-   - **"📜 Escalas anteriores"** → `janela_historico.py`: listar, abrir, trocar pessoas, copiar, excluir (com confirmação).
-4. **⚙️ Configurações** (`janela_configuracoes.py`): seções **Turnos**, **Feriados**, **Duplas**, **Escala**, **Mensagem** e **Opções avançadas** (recolhida). Todo campo usa `CampoComAjuda`. Botões **Salvar**, **Cancelar**, **Restaurar padrão**. Validar (nº de duplas ≥ 1; avisar se 2 × duplas de um dia > pessoas ativas).
+### 10.5 Telas
+1. **`JanelaPrincipal(ctk.CTk)`**: tamanho inicial 1080×720 (mínimo 960×640); cabeçalho com título e botão **⚙️ Configurações**; 3 abas grandes (**👥 Equipe**, **📅 Folgas**, **📋 Escala**); rodapé com versão e aviso de atualização. Ao abrir: se `carregar()` devolver aviso (dados recuperados), mostrá-lo.
+2. **👥 Equipe** (`tela_equipe.py`): contador no topo (*"28 pessoas ativas (10 experientes)"*); lista em cartões/linhas claras (nome, selo `⭐ Experiente`, "inativo" em cinza no fim). Botões: **+ Adicionar pessoa** (primário), **Editar** (nome/experiente), **Desativar/Reativar** (reativar ajusta `data_entrada` para hoje). Remover definitivamente só em "Editar", com confirmação, e só se a pessoa não estiver em escalas confirmadas.
+3. **📅 Folgas** (`tela_folgas.py`): lista de pessoas ativas à esquerda (mostrando quantas folgas futuras cada uma tem); `CalendarioMensal` à direita (clicar no dia marca/desmarca) + lista das datas marcadas com botão "Remover". Botão **"Marcar período (férias)"**: de/até.
+4. **📋 Escala** (`tela_escala.py`):
+   - Topo (barra de controle em um `CartaoFrame`): período (**"Esta semana"** / **"Próxima semana"** / **"Escolher data…"**), nº de semanas, feriados do período + **"+ Adicionar feriado"** (`janela_feriado.py`), e botão **"Gerar escala"** (primário).
+   - Barra de status da escala (faixa de rascunho ou confirmada) + avisos de validação em amarelo.
+   - Área central rolável: cartões por plantão (*"📅 Sábado, 07/11 — Manhã"*), cada dupla numerada com dois menus (`CTkOptionMenu` ou diálogo de troca usando `pessoas_para_troca`).
+   - Rodapé da aba: à esquerda, **"📊 Quadro de justiça"** e **"📜 Escalas anteriores"** (secundários); à direita, **"✅ Confirmar escala"** e **"📋 Copiar para WhatsApp"** (sucesso).
+5. **📊 Quadro de justiça** (`janela_justica.py`):
+   - Explicação curta no topo: *"As pessoas no topo da lista têm prioridade para entrar na próxima escala (contando apenas escalas já confirmadas)."*
+   - Tabela rolável gerada por `quadro_de_justica(dados)` com colunas: **Ordem na fila** (`1º`, `2º`…), **Nome** (com ⭐), **Plantões feitos** (`plantoes_reais`), **Em feriados** (`feriados_trabalhados`), **Último plantão** (`07/11` ou `"Nunca"`), **Observação** (mostra *"Entrou/voltou empatado"* quando `carga_justica > plantoes_reais`).
+6. **📜 Escalas anteriores** (`janela_historico.py`): listar escalas confirmadas por período, abrir para visualizar/trocar pessoas, copiar para WhatsApp ou excluir (com confirmação).
+7. **⚙️ Configurações** (`janela_configuracoes.py`): seções **Turnos**, **Feriados**, **Duplas**, **Escala**, **Mensagem** e **Opções avançadas** (recolhida por padrão). Todo campo usa `CampoComAjuda`. Botões **Salvar** (primário), **Cancelar** (secundário), **Restaurar padrão** (perigo). Validar (nº de duplas ≥ 1; avisar se 2 × duplas de um dia > pessoas ativas).
 
-### 10.4 Texto para WhatsApp (formato exato)
+### 10.6 Texto para WhatsApp (formato exato)
 ```
 📋 *ESCALA DE PLANTÃO*
 
@@ -744,10 +818,10 @@ pyinstaller --onefile --windowed --name PlanejadorEscala --collect-data customtk
 | 0 ✅ | Ambiente, Git, estrutura, janela de teste | Concluída | venv, pip, Git, pacotes |
 | 1 | `modelos.py`, `datas.py`, `armazenamento.py` + testes | Ida e volta JSON sem perda; backup (máx. 10); salvamento atômico; recuperação de arquivo corrompido; testes verdes | dataclasses, type hints, JSON, serialização, pathlib, exceções |
 | 2 | `historico.py`, `gerador.py`, `edicao.py` + testes | Todos os testes da seção 14 (gerador/histórico/edição) verdes | algoritmo guloso, ordenação por tupla, conjuntos, dicionários, deepcopy, fonte única da verdade |
-| 3 | `exportar.py`, `textos_ajuda.py` + testes | Texto idêntico ao da seção 10.4; toda configuração tem ajuda | f-strings, formatação |
-| 4 | Interface base + `componentes.py` + aba Equipe | Adicionar/editar/desativar persiste após fechar e abrir | GUI, eventos, callbacks, laço de eventos |
-| 5 | Aba Folgas + `CalendarioMensal` | Folgas marcadas aparecem e são respeitadas na geração | layout em grade, laços |
-| 6 | Aba Escala + feriado + histórico + copiar | Gerar → trocar → confirmar → copiar funcionando ponta a ponta | integração lógica ↔ interface, área de transferência |
+| 3 | `exportar.py`, `textos_ajuda.py` + testes | Texto idêntico ao da seção 10.6; toda configuração tem ajuda | f-strings, formatação |
+| 4 | Interface base + Design System (`componentes.py`) + aba Equipe | Adicionar/editar/desativar persiste após fechar e abrir; tokens visuais aplicados | GUI, Design System, fluxo unidirecional, eventos, callbacks |
+| 5 | Aba Folgas + `CalendarioMensal` | Folgas marcadas aparecem e são respeitadas na geração | layout em grade, responsividade, estados vazios |
+| 6 | Aba Escala + feriado + quadro de justiça + histórico + copiar | Gerar → trocar → confirmar → copiar + quadro de justiça funcionando ponta a ponta | integração lógica ↔ interface, janelas modais, área de transferência |
 | 7 | ⚙️ Configurações com ajuda | Todas as opções da seção 4.2 alteram o comportamento; "Restaurar padrão" funciona | parametrização, validação de entrada |
 | 8 | `iniciar.py` + `.exe` manual | `.exe` abre num PC sem Python | empacotamento |
 | 9 | `atualizador.py` + testes | Testes com monkeypatch verdes; atualização real testada com 2 versões | HTTP, API REST, threads, hash, versionamento semântico |
@@ -764,7 +838,7 @@ pyinstaller --onefile --windowed --name PlanejadorEscala --collect-data customtk
 
 **armazenamento**: ida e volta preserva tudo; arquivo inexistente → padrão; corrompido → recupera backup e retorna aviso; nunca mais de 10 backups; `importar_copia` inválida → `ErroEscala`.
 
-**historico**: rascunho não conta; editar escala confirmada muda contadores; pessoa nova entra com a menor carga; volta de férias entra com a menor carga (padrão); com `compensar_ausencias=True` mantém a carga baixa.
+**historico**: rascunho não conta; editar escala confirmada muda contadores; pessoa nova entra com a menor carga; volta de férias entra com a menor carga (padrão); com `compensar_ausencias=True` mantém a carga baixa; `quadro_de_justica` ordena corretamente quem trabalhou menos primeiro e distingue `plantoes_reais` de `carga_justica`.
 
 **gerador**:
 - Nº de duplas correto; ninguém 2× no mesmo dia; indisponíveis e inativos nunca escalados.
@@ -779,7 +853,7 @@ pyinstaller --onefile --windowed --name PlanejadorEscala --collect-data customtk
 
 **edicao**: troca para alguém já escalado no dia → `ErroEscala`; troca para alguém de folga → aviso; `confirmar_rascunho` substitui sobrepostas.
 
-**exportar**: texto exato da seção 10.4 (com e sem feriado e texto final).
+**exportar**: texto exato da seção 10.6 (com e sem feriado e texto final).
 
 **textos_ajuda**: todo campo de `Configuracao` tem ajuda com título, explicação e exemplo não vazios.
 

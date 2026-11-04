@@ -73,3 +73,22 @@ e `janela_justica.py` na interface).
 - **Hierarquia visual e cores semânticas:** destacar apenas 1 botão principal por área para guiar o olhar do usuário.
 - **Lei de Fitts:** quanto maior e mais próximo o botão, mais fácil e rápido é clicar nele (importante para usuários leigos).
 - **Heurísticas de Nielsen (Visibilidade do status e Estados vazios):** o programa sempre informa o que está acontecendo (ex.: faixa "Rascunho", botão "✅ Copiado!", textos explicativos quando uma lista está vazia).
+
+## 04/11/2026 — Fase 1: Modelos, Datas e Armazenamento
+
+**O que mudou:** implementados os módulos fundamentais de dados (`modelos.py`), utilidades de calendário sem dependência de locale (`datas.py`), sistema de persistência com salvamento atômico, backups automáticos e recuperação de falhas (`armazenamento.py`), além de suite completa de 35 testes automatizados cobrindo todos os cenários.
+
+**Decisões:**
+- Utilização de `dataclasses` com `field(default_factory=...)` para estruturas limpas e com valores padrão seguros.
+- `ErroEscala` centralizado em `modelos.py` para evitar importações circulares e padronizar mensagens amigáveis para o usuário.
+- Formatação e leitura de datas manuais em português sem depender da configuração de idioma (`locale`) do Windows.
+- Gravação atômica via arquivo temporário (`.tmp` + `os.replace`) e rotação automática de no máximo 10 backups.
+- Recuperação transparente: se `dados.json` for corrompido, o sistema busca automaticamente o backup válido mais recente e restaura.
+
+**Conceitos aprendidos:**
+- **Dataclass:** funcionalidade do Python que gera automaticamente construtor (`__init__`), representação (`__repr__`) e métodos essenciais para classes focadas em dados.
+- **Type hints:** anotações de tipos no código que tornam os contratos explícitos e previnem erros sutis.
+- **Serialização e Desserialização:** processo de converter objetos em memória para texto estruturado (JSON/dicionários) e reconstruí-los de volta em objetos de classes.
+- **Salvamento atômico:** técnica de gravar em um arquivo temporário e renomear de uma vez só (`os.replace`), evitando corromper dados se o computador desligar no meio.
+- **Pathlib:** módulo moderno do Python para manipular caminhos de pastas e arquivos de forma segura e independente de sistema operacional.
+- **Exceções customizadas:** classes de erro próprias (como `ErroEscala`) usadas para separar erros esperados de regras de negócio de falhas inesperadas de programação.

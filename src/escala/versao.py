@@ -6,4 +6,5 @@ Formato MAIOR.MENOR.CORREÇÃO (versionamento semântico):
 - CORREÇÃO: correções de erros.
 """
 
-VERSAO = "0.1.0"
+VERSAO: str = "0.1.0"
+REPOSITORIO_GITHUB: str = ""

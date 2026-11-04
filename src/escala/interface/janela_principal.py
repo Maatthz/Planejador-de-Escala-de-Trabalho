@@ -24,6 +24,7 @@ from src.escala.interface.componentes import (
     mostrar_info,
 )
 from src.escala.interface.tela_equipe import TelaEquipe
+from src.escala.interface.tela_escala import TelaEscala
 from src.escala.interface.tela_folgas import TelaFolgas
 from src.escala.modelos import DadosDoPrograma
 from src.escala.versao import VERSAO
@@ -119,12 +120,13 @@ class JanelaPrincipal(ctk.CTk):
         )
         self.tela_folgas.pack(fill="both", expand=True)
 
-        # Placeholder para a Fase 6
-        self._construir_placeholder_aba(
-            self.tab_escala,
-            "📋 Geração e Edição de Escalas",
-            "A geração automática, quadro de justiça e histórico serão ativados na Fase 6.",
+        # Aba Escala (implementada na Fase 6)
+        self.tela_escala = TelaEscala(
+            master=self.tab_escala,
+            dados=self.dados,
+            ao_mudar=self.ao_mudar,
         )
+        self.tela_escala.pack(fill="both", expand=True)
 
     def _construir_placeholder_aba(self, tab, titulo: str, subtitulo: str) -> None:
         """Exibe mensagem orientativa nas abas das fases futuras."""
@@ -150,3 +152,5 @@ class JanelaPrincipal(ctk.CTk):
         self.tela_equipe.atualizar_tela()
         if hasattr(self, "tela_folgas"):
             self.tela_folgas.atualizar_tela()
+        if hasattr(self, "tela_escala"):
+            self.tela_escala.atualizar_tela()

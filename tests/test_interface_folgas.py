@@ -11,16 +11,10 @@ from src.escala.interface.janela_principal import JanelaPrincipal
 from src.escala.modelos import DadosDoPrograma
 
 
-@pytest.fixture(scope="module")
-def app_janela_folgas():
-    """Mantém uma instância de janela para os testes da aba de folgas."""
-    app = JanelaPrincipal(dados=DadosDoPrograma())
-    app.withdraw()
-    yield app
-    try:
-        app.destroy()
-    except Exception:
-        pass
+@pytest.fixture
+def app_janela_folgas(app_janela_compartilhada: JanelaPrincipal) -> JanelaPrincipal:
+    """Usa a janela compartilhada da sessão para evitar recriação de Tcl."""
+    return app_janela_compartilhada
 
 
 def test_tela_folgas_inicializacao_estado_vazio(

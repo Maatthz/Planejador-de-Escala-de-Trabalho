@@ -156,3 +156,18 @@ e `janela_justica.py` na interface).
 - **Layout em grade (Grid Layout):** gerenciador de geometria (`grid`, `row`, `column`, `weight`) que distribui elementos em linhas e colunas alinhadas, essencial para construir o calendário 7x6 e dividir a tela em proporções fixas e expansíveis.
 - **Responsividade:** capacidade da interface gráfica de redimensionar seus componentes proporcionalmente (`grid_columnconfigure(..., weight=1)`) quando o usuário estica ou maximiza a janela.
 - **Estados vazios (Empty States):** padrão de design que apresenta mensagens acolhedoras e orientativas quando uma tela ou seleção ainda não possui dados (ex.: orientar o usuário a escolher um integrante para ver suas folgas).
+
+## 04/11/2026 — Fase 6: Aba Escala, Feriados, Quadro de Justiça e Histórico
+
+**O que mudou:** implementada a aba principal de geração e gestão de escalas (`tela_escala.py`), com os diálogos modais de cadastro de feriados (`janela_feriado.py`), visualização do quadro de justiça (`janela_justica.py`) e consulta/exclusão de histórico (`janela_historico.py`). Inclui suporte a troca manual de pessoas com validação de regras, confirmação de rascunhos e cópia direta do texto formatado para o WhatsApp, totalizando 82 testes automatizados verdes.
+
+**Decisões:**
+- Status visual claro da escala: faixas semânticas destacam se a escala em exibição é um rascunho (amarelo) ou já está confirmada (verde).
+- Troca manual assistida: menu suspenso alimentado por `pessoas_para_troca`, mostrando se a pessoa já trabalha em outro dia ou marcou folga, com avisos amigáveis e bloqueio contra escalar a mesma pessoa duas vezes no mesmo dia.
+- Exportação em um clique: botão "Copiar para WhatsApp" coloca o texto formatado na área de transferência e altera temporariamente o texto do botão para "✓ Copiado!", fornecendo feedback tátil e visual imediato.
+- Estabilidade de Tcl/Tk em testes de interface no Windows: adoção de uma fixture de sessão (`app_janela_compartilhada` em `conftest.py`) que reutiliza o mesmo root Tcl/Tk oculto, evitando corrupção de bibliotecas internas ao destruir e recriar instâncias de `CTk`.
+
+**Conceitos aprendidos:**
+- **Integração lógica ↔ interface:** conectar funções puras de regras de negócio (`gerador.py`, `edicao.py`, `historico.py`) aos componentes gráficos sem acoplamento indevido, mantendo a camada de lógica limpa e independente de bibliotecas de GUI.
+- **Janelas modais (Modal Dialogs):** janelas secundárias (`CTkToplevel`) focadas em tarefas específicas que capturam as atenções e eventos do usuário (`grab_set`) e garantem cancelamento limpo ao fechar ou apertar `Esc`.
+- **Área de transferência (Clipboard):** canal de comunicação entre programas gerenciado pelo sistema operacional, acessado através de métodos como `clipboard_clear()` e `clipboard_append()` da janela Tkinter.

@@ -9,20 +9,9 @@ from src.escala.interface.janela_principal import JanelaPrincipal
 from src.escala.modelos import DadosDoPrograma
 
 
-@pytest.fixture(scope="module")
-def app_janela():
-    """Mantém uma única instância de janela para os testes de interface, evitando recriação do interpretador Tcl."""
-    app = JanelaPrincipal(dados=DadosDoPrograma())
-    app.withdraw()
-    yield app
-    try:
-        app.destroy()
-    except Exception:
-        pass
-
-
-def test_janela_principal_inicializacao(app_janela: JanelaPrincipal, dados_padrao: DadosDoPrograma) -> None:
+def test_janela_principal_inicializacao(app_janela_compartilhada: JanelaPrincipal, dados_padrao: DadosDoPrograma) -> None:
     """JanelaPrincipal deve inicializar sem erros e renderizar a aba Equipe."""
+    app_janela = app_janela_compartilhada
     app_janela.dados = dados_padrao
     app_janela.tela_equipe.dados = dados_padrao
     app_janela.tela_equipe.atualizar_tela()
@@ -32,8 +21,9 @@ def test_janela_principal_inicializacao(app_janela: JanelaPrincipal, dados_padra
     assert "28 pessoas ativas" in app_janela.tela_equipe.lbl_contador.cget("text")
 
 
-def test_equipe_estado_vazio(app_janela: JanelaPrincipal) -> None:
+def test_equipe_estado_vazio(app_janela_compartilhada: JanelaPrincipal) -> None:
     """Quando não há pessoas cadastradas, a tela deve exibir o estado vazio orientativo."""
+    app_janela = app_janela_compartilhada
     dados_vazios = DadosDoPrograma()
     app_janela.dados = dados_vazios
     app_janela.tela_equipe.dados = dados_vazios
@@ -46,9 +36,10 @@ def test_equipe_estado_vazio(app_janela: JanelaPrincipal) -> None:
 
 
 def test_adicionar_pessoa_persiste_ao_salvar(
-    app_janela: JanelaPrincipal, pasta_temporaria: Path, dados_padrao: DadosDoPrograma
+    app_janela_compartilhada: JanelaPrincipal, pasta_temporaria: Path, dados_padrao: DadosDoPrograma
 ) -> None:
     """Adicionar uma pessoa via TelaEquipe deve persistir no disco através de ao_mudar()."""
+    app_janela = app_janela_compartilhada
     app_janela.dados = dados_padrao
     app_janela.tela_equipe.dados = dados_padrao
     app_janela.tela_equipe.atualizar_tela()
@@ -66,9 +57,10 @@ def test_adicionar_pessoa_persiste_ao_salvar(
 
 
 def test_desativar_e_reativar_pessoa(
-    app_janela: JanelaPrincipal, pasta_temporaria: Path, dados_padrao: DadosDoPrograma
+    app_janela_compartilhada: JanelaPrincipal, pasta_temporaria: Path, dados_padrao: DadosDoPrograma
 ) -> None:
     """Desativar uma pessoa a torna inativa; reativar atualiza data_entrada para hoje."""
+    app_janela = app_janela_compartilhada
     app_janela.dados = dados_padrao
     app_janela.tela_equipe.dados = dados_padrao
     app_janela.tela_equipe.atualizar_tela()
@@ -95,9 +87,10 @@ def test_desativar_e_reativar_pessoa(
 
 
 def test_excluir_pessoa_sem_escalas(
-    app_janela: JanelaPrincipal, pasta_temporaria: Path, dados_padrao: DadosDoPrograma
+    app_janela_compartilhada: JanelaPrincipal, pasta_temporaria: Path, dados_padrao: DadosDoPrograma
 ) -> None:
     """Pessoa sem escalas confirmadas pode ser excluída e a alteração persiste."""
+    app_janela = app_janela_compartilhada
     app_janela.dados = dados_padrao
     app_janela.tela_equipe.dados = dados_padrao
     app_janela.tela_equipe.atualizar_tela()

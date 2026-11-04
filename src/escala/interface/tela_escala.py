@@ -1,0 +1,566 @@
+"""Aba principal de geração, edição e confirmação de Escalas de Plantão.
+
+Permite selecionar o período, adicionar feriados, gerar a escala de plantão,
+trocar integrantes manualmente, validar regras, confirmar e copiar para o WhatsApp.
+"""
+
+from collections.abc import Callable
+from datetime import date, timedelta
+import customtkinter as ctk
+
+from src.escala.datas import (
+    formatar_data,
+    formatar_dia_completo,
+    inicio_da_semana,
+    ler_data,
+)
+from src.escala.edicao import (
+    confirmar_rascunho,
+    escalas_sobrepostas,
+    pessoas_para_troca,
+    trocar_pessoa,
+    validar_escala,
+)
+from src.escala.exportar import gerar_texto_whatsapp
+from src.escala.gerador import descrever_plantao, gerar_escala
+from src.escala.interface.componentes import (
+    COR_AVISO_FUNDO,
+    COR_AVISO_TEXTO,
+    COR_BORDA,
+    COR_CARTAO,
+    COR_FUNDO,
+    COR_PERIGO,
+    COR_PRIMARIA,
+    COR_PRIMARIA_HOVER,
+    COR_SECUNDARIA,
+    COR_SECUNDARIA_HOVER,
+    COR_SECUNDARIA_TEXTO,
+    COR_SUCESSO,
+    COR_SUCESSO_HOVER,
+    COR_TEXTO,
+    COR_TEXTO_SUAVE,
+    FONTE_AJUDA,
+    FONTE_BOTAO,
+    FONTE_CORPO,
+    FONTE_SUBTITULO,
+    FONTE_TITULO,
+    BotaoGrande,
+    CartaoFrame,
+    configurar_janela_modal,
+    mostrar_erro,
+    mostrar_info,
+    perguntar_sim_nao,
+)
+from src.escala.interface.janela_feriado import JanelaFeriado
+from src.escala.interface.janela_historico import JanelaHistorico
+from src.escala.interface.janela_justica import JanelaJustica
+from src.escala.modelos import DadosDoPrograma, ErroEscala, Escala, Plantao
+
+
+class TelaEscala(ctk.CTkFrame):
+    """Visualização e controle da Escala de Plantão (Aba Escala)."""
+
+    def __init__(
+        self,
+        master,
+        dados: DadosDoPrograma,
+        ao_mudar: Callable[[], None],
+        **kwargs,
+    ) -> None:
+        super().__init__(master=master, fg_color=COR_FUNDO, **kwargs)
+        self.dados = dados
+        self.ao_mudar = ao_mudar
+
+        # Data de início padrão: segunda-feira desta semana
+        self.data_inicio: date = inicio_da_semana(date.today())
+        # Escala ativa sendo exibida (pode ser o rascunho ou uma do histórico)
+        self.escala_ativa: Escala | None = self.dados.rascunho
+
+        self._construir_interface()
+        self.atualizar_tela()
+
+    def _construir_interface(self) -> None:
+        """Monta a barra superior de controles, área rolável e rodapé com botões de ação."""
+        self._construir_barra_controle()
+
+        # Faixa de status e avisos
+        self.faixa_status = ctk.CTkFrame(self, fg_color="transparent")
+        self.faixa_status.pack(fill="x", padx=20, pady=(0, 6))
+
+        # Área central rolável para os cartões de plantão
+        self.scroll_plantoes = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self.scroll_plantoes.pack(fill="both", expand=True, padx=20, pady=(0, 10))
+
+        # Rodapé com ações
+        self._construir_rodape()
+
+    def _construir_barra_controle(self) -> None:
+        """Barra com botões de período, seletor de semanas, feriados e botão Gerar."""
+        barra = CartaoFrame(self)
+        barra.pack(fill="x", padx=20, pady=(16, 10))
+
+        linha = ctk.CTkFrame(barra, fg_color="transparent")
+        linha.pack(fill="x", padx=16, pady=12)
+
+        # Botões de escolha do período
+        lbl_per = ctk.CTkLabel(linha, text="Período:", font=FONTE_SUBTITULO, text_color=COR_TEXTO)
+        lbl_per.pack(side="left", padx=(0, 8))
+
+        self.btn_esta_semana = BotaoGrande(
+            linha,
+            "Esta semana",
+            comando=self._selecionar_esta_semana,
+            variante="secundaria",
+            height=36,
+        )
+        self.btn_esta_semana.pack(side="left", padx=(0, 6))
+
+        self.btn_prox_semana = BotaoGrande(
+            linha,
+            "Próxima semana",
+            comando=self._selecionar_proxima_semana,
+            variante="secundaria",
+            height=36,
+        )
+        self.btn_prox_semana.pack(side="left", padx=(0, 6))
+
+        self.btn_outra_data = BotaoGrande(
+            linha,
+            "Escolher data…",
+            comando=self._abrir_dialogo_escolher_data,
+            variante="secundaria",
+            height=36,
+        )
+        self.btn_outra_data.pack(side="left", padx=(0, 14))
+
+        # Quantidade de semanas
+        lbl_sem = ctk.CTkLabel(linha, text="Semanas:", font=FONTE_CORPO, text_color=COR_TEXTO)
+        lbl_sem.pack(side="left", padx=(0, 4))
+
+        self.combo_semanas = ctk.CTkOptionMenu(
+            linha,
+            values=["1", "2", "3", "4"],
+            width=65,
+            height=36,
+            font=FONTE_CORPO,
+        )
+        self.combo_semanas.set(str(self.dados.configuracao.semanas_por_geracao))
+        self.combo_semanas.pack(side="left", padx=(0, 14))
+
+        # Feriados
+        btn_feriado = BotaoGrande(
+            linha,
+            "+ Feriado",
+            comando=self._abrir_janela_feriados,
+            variante="secundaria",
+            height=36,
+        )
+        btn_feriado.pack(side="left", padx=(0, 14))
+
+        # Botão principal Gerar Escala
+        self.btn_gerar = BotaoGrande(
+            linha,
+            "Gerar escala",
+            comando=self._executar_geracao,
+            variante="primaria",
+            height=40,
+        )
+        self.btn_gerar.pack(side="right")
+
+    def _construir_rodape(self) -> None:
+        """Rodapé com botões de quadro de justiça, histórico, confirmação e copiar WhatsApp."""
+        rodape = CartaoFrame(self)
+        rodape.pack(fill="x", padx=20, pady=(0, 16))
+
+        linha = ctk.CTkFrame(rodape, fg_color="transparent")
+        linha.pack(fill="x", padx=16, pady=10)
+
+        # Lado esquerdo — consultas auxiliares
+        btn_justica = BotaoGrande(
+            linha,
+            "📊 Quadro de justiça",
+            comando=self._abrir_quadro_justica,
+            variante="secundaria",
+            height=36,
+        )
+        btn_justica.pack(side="left", padx=(0, 8))
+
+        btn_hist = BotaoGrande(
+            linha,
+            "📜 Escalas anteriores",
+            comando=self._abrir_historico,
+            variante="secundaria",
+            height=36,
+        )
+        btn_hist.pack(side="left")
+
+        # Lado direito — ações finais
+        self.btn_copiar = BotaoGrande(
+            linha,
+            "📋 Copiar para WhatsApp",
+            comando=self._copiar_whatsapp,
+            variante="sucesso",
+            height=40,
+        )
+        self.btn_copiar.pack(side="right", padx=(8, 0))
+
+        self.btn_confirmar = BotaoGrande(
+            linha,
+            "✅ Confirmar escala",
+            comando=self._confirmar_escala_atual,
+            variante="sucesso",
+            height=40,
+        )
+        self.btn_confirmar.pack(side="right")
+
+    def atualizar_tela(self) -> None:
+        """Atualiza a exibição da escala ativa, faixas de status e avisos."""
+        # Se houver rascunho e nenhuma outra escala selecionada, usa o rascunho
+        if self.dados.rascunho is not None:
+            self.escala_ativa = self.dados.rascunho
+        elif self.escala_ativa is None and self.dados.escalas:
+            self.escala_ativa = self.dados.escalas[-1]
+
+        self._atualizar_faixa_status()
+        self._atualizar_cartoes_plantoes()
+
+    def _atualizar_faixa_status(self) -> None:
+        """Renderiza a faixa de status (rascunho ou confirmada) e avisos de validação."""
+        for filho in self.faixa_status.winfo_children():
+            filho.destroy()
+
+        if self.escala_ativa is None:
+            return
+
+        # Faixa de Rascunho vs Confirmada
+        if not self.escala_ativa.confirmada:
+            faixa = ctk.CTkFrame(self.faixa_status, fg_color=COR_AVISO_FUNDO, corner_radius=8)
+            faixa.pack(fill="x", pady=(0, 6))
+            lbl = ctk.CTkLabel(
+                faixa,
+                text="⚠️ Rascunho — esta escala ainda não está valendo. Clique em 'Confirmar escala' para salvar no histórico.",
+                font=FONTE_CORPO,
+                text_color=COR_AVISO_TEXTO,
+            )
+            lbl.pack(padx=16, pady=8, anchor="w")
+        else:
+            faixa = ctk.CTkFrame(self.faixa_status, fg_color="#DCFCE7", corner_radius=8)
+            faixa.pack(fill="x", pady=(0, 6))
+            lbl = ctk.CTkLabel(
+                faixa,
+                text="✅ Escala confirmada e salva no histórico.",
+                font=FONTE_CORPO,
+                text_color="#166534",
+            )
+            lbl.pack(padx=16, pady=8, anchor="w")
+
+        # Avisos de validação
+        avisos = validar_escala(self.escala_ativa, self.dados)
+        if avisos:
+            caixa_aviso = ctk.CTkFrame(self.faixa_status, fg_color=COR_AVISO_FUNDO, corner_radius=8)
+            caixa_aviso.pack(fill="x", pady=(0, 6))
+            lbl_tit_aviso = ctk.CTkLabel(
+                caixa_aviso,
+                text="Atenção aos seguintes pontos nesta escala:",
+                font=FONTE_SUBTITULO,
+                text_color=COR_AVISO_TEXTO,
+            )
+            lbl_tit_aviso.pack(padx=16, pady=(6, 2), anchor="w")
+
+            for av in avisos:
+                lbl_item = ctk.CTkLabel(
+                    caixa_aviso,
+                    text=f"• {av}",
+                    font=FONTE_AJUDA,
+                    text_color=COR_AVISO_TEXTO,
+                )
+                lbl_item.pack(padx=24, pady=1, anchor="w")
+            ctk.CTkLabel(caixa_aviso, text="", height=4).pack()
+
+    def _atualizar_cartoes_plantoes(self) -> None:
+        """Renderiza os cartões dos plantões e das duplas."""
+        for filho in self.scroll_plantoes.winfo_children():
+            filho.destroy()
+
+        if self.escala_ativa is None:
+            self._mostrar_estado_vazio()
+            return
+
+        for idx_plantao, plantao in enumerate(self.escala_ativa.plantoes):
+            self._criar_cartao_plantao(plantao, idx_plantao)
+
+    def _mostrar_estado_vazio(self) -> None:
+        """Orienta o usuário a gerar uma escala quando nenhuma está ativa."""
+        cartao_vazio = CartaoFrame(self.scroll_plantoes)
+        cartao_vazio.pack(fill="x", pady=40, ipady=40)
+
+        lbl = ctk.CTkLabel(
+            cartao_vazio,
+            text="Nenhuma escala gerada no momento.\n\nEscolha o período na barra acima e clique em 'Gerar escala'.",
+            font=FONTE_SUBTITULO,
+            text_color=COR_TEXTO_SUAVE,
+            justify="center",
+        )
+        lbl.pack(expand=True)
+
+    def _criar_cartao_plantao(self, plantao: Plantao, idx_plantao: int) -> None:
+        """Cria o cartão com título do turno e a lista numerada de duplas com botões de troca."""
+        cartao = CartaoFrame(self.scroll_plantoes)
+        cartao.pack(fill="x", pady=6)
+
+        # Cabeçalho do plantão
+        topo = ctk.CTkFrame(cartao, fg_color="transparent")
+        topo.pack(fill="x", padx=16, pady=(12, 6))
+
+        dia_txt = formatar_dia_completo(plantao.data)
+        per_txt = plantao.periodo.capitalize()
+        fer_txt = f" (Feriado: {plantao.nome_feriado})" if plantao.eh_feriado and plantao.nome_feriado else ""
+
+        lbl_tit = ctk.CTkLabel(
+            topo,
+            text=f"📅 {dia_txt} — {per_txt}{fer_txt}",
+            font=FONTE_SUBTITULO,
+            text_color=COR_TEXTO,
+            anchor="w",
+        )
+        lbl_tit.pack(side="left")
+
+        # Lista de duplas
+        for num_dupla, dupla in enumerate(plantao.duplas, start=1):
+            linha_dupla = ctk.CTkFrame(cartao, fg_color=COR_FUNDO, corner_radius=6)
+            linha_dupla.pack(fill="x", padx=16, pady=4)
+
+            p_a = self.dados.buscar_pessoa(dupla.pessoa_a)
+            p_b = self.dados.buscar_pessoa(dupla.pessoa_b)
+            nome_a = f"{p_a.nome} ⭐" if p_a and p_a.experiente else (p_a.nome if p_a else f"ID {dupla.pessoa_a}")
+            nome_b = f"{p_b.nome} ⭐" if p_b and p_b.experiente else (p_b.nome if p_b else f"ID {dupla.pessoa_b}")
+
+            lbl_num = ctk.CTkLabel(
+                linha_dupla,
+                text=f"{num_dupla}.",
+                font=FONTE_SUBTITULO,
+                text_color=COR_TEXTO,
+                width=30,
+            )
+            lbl_num.pack(side="left", padx=(10, 4))
+
+            # Pessoa A
+            lbl_a = ctk.CTkLabel(linha_dupla, text=nome_a, font=FONTE_CORPO, text_color=COR_TEXTO)
+            lbl_a.pack(side="left", padx=6)
+
+            btn_trocar_a = BotaoGrande(
+                linha_dupla,
+                "Trocar",
+                comando=lambda ip=idx_plantao, sa=dupla.pessoa_a: self._abrir_dialogo_troca(ip, sa),
+                variante="secundaria",
+                height=28,
+            )
+            btn_trocar_a.pack(side="left", padx=(0, 16))
+
+            lbl_e = ctk.CTkLabel(linha_dupla, text="e", font=FONTE_AJUDA, text_color=COR_TEXTO_SUAVE)
+            lbl_e.pack(side="left", padx=4)
+
+            # Pessoa B
+            lbl_b = ctk.CTkLabel(linha_dupla, text=nome_b, font=FONTE_CORPO, text_color=COR_TEXTO)
+            lbl_b.pack(side="left", padx=6)
+
+            btn_trocar_b = BotaoGrande(
+                linha_dupla,
+                "Trocar",
+                comando=lambda ip=idx_plantao, sb=dupla.pessoa_b: self._abrir_dialogo_troca(ip, sb),
+                variante="secundaria",
+                height=28,
+            )
+            btn_trocar_b.pack(side="left")
+
+        ctk.CTkLabel(cartao, text="", height=4).pack()
+
+    def _abrir_dialogo_troca(self, indice_plantao: int, id_sai: int) -> None:
+        """Abre modal com lista de opções para substituir uma pessoa no plantão."""
+        if self.escala_ativa is None:
+            return
+
+        pessoa_sai = self.dados.buscar_pessoa(id_sai)
+        nome_sai = pessoa_sai.nome if pessoa_sai else f"ID {id_sai}"
+
+        janela = ctk.CTkToplevel(self)
+        configurar_janela_modal(janela, self.winfo_toplevel(), f"Substituir {nome_sai}", 540, 480)
+
+        lbl_tit = ctk.CTkLabel(
+            janela,
+            text=f"Escolha quem entrará no lugar de {nome_sai}:",
+            font=FONTE_SUBTITULO,
+            text_color=COR_TEXTO,
+        )
+        lbl_tit.pack(padx=24, pady=(20, 10), anchor="w")
+
+        scroll = ctk.CTkScrollableFrame(janela, fg_color="transparent")
+        scroll.pack(fill="both", expand=True, padx=20, pady=(0, 16))
+
+        opcoes = pessoas_para_troca(self.escala_ativa, indice_plantao, self.dados)
+        for pessoa_entra, obs in opcoes:
+            cartao_opcao = CartaoFrame(scroll)
+            cartao_opcao.pack(fill="x", pady=3)
+
+            lbl_nome = ctk.CTkLabel(
+                cartao_opcao,
+                text=pessoa_entra.nome,
+                font=FONTE_CORPO,
+                text_color=COR_TEXTO,
+            )
+            lbl_nome.pack(side="left", padx=12, pady=8)
+
+            if obs:
+                lbl_obs = ctk.CTkLabel(
+                    cartao_opcao,
+                    text=f"({obs})",
+                    font=FONTE_AJUDA,
+                    text_color=COR_AVISO_TEXTO,
+                )
+                lbl_obs.pack(side="left", padx=6)
+
+            btn_escolher = BotaoGrande(
+                cartao_opcao,
+                "Escolher",
+                comando=lambda pe=pessoa_entra: self._efetivar_troca(janela, indice_plantao, id_sai, pe.id),
+                variante="secundaria",
+                height=30,
+            )
+            btn_escolher.pack(side="right", padx=12)
+
+    def _efetivar_troca(self, janela: ctk.CTkToplevel, indice_plantao: int, id_sai: int, id_entra: int) -> None:
+        """Executa trocar_pessoa, trata erros e avisos, e atualiza tela."""
+        if self.escala_ativa is None:
+            return
+
+        try:
+            avisos = trocar_pessoa(self.escala_ativa, indice_plantao, id_sai, id_entra, self.dados)
+            janela.destroy()
+            self.ao_mudar()
+
+            if avisos:
+                mostrar_info(self, "\n".join(avisos))
+        except ErroEscala as erro:
+            mostrar_erro(janela, str(erro))
+
+    def _executar_geracao(self) -> None:
+        """Gera nova proposta de escala a partir dos parâmetros selecionados."""
+        try:
+            qtd_sem = int(self.combo_semanas.get())
+        except ValueError:
+            qtd_sem = 1
+
+        try:
+            nova_escala = gerar_escala(
+                dados=self.dados,
+                inicio=self.data_inicio,
+                qtd_semanas=qtd_sem,
+            )
+            self.escala_ativa = nova_escala
+            self.ao_mudar()
+        except ErroEscala as erro:
+            mostrar_erro(self, str(erro))
+
+    def _confirmar_escala_atual(self) -> None:
+        """Confirma o rascunho ativo e o salva definitivamente no histórico."""
+        if self.dados.rascunho is None:
+            mostrar_info(self, "Não há nenhum rascunho de escala para confirmar.")
+            return
+
+        sobrepostas = escalas_sobrepostas(self.dados, self.dados.rascunho)
+        if sobrepostas:
+            confirmado = perguntar_sim_nao(
+                self,
+                "Substituir escala existente",
+                "Já existem escalas confirmadas no histórico com datas em comum com este rascunho.\n\n"
+                "Confirmar agora irá substituir as escalas anteriores nessas datas. Deseja continuar?",
+            )
+            if not confirmado:
+                return
+
+        confirmar_rascunho(self.dados)
+        self.escala_ativa = self.dados.escalas[-1] if self.dados.escalas else None
+        self.ao_mudar()
+
+    def _copiar_whatsapp(self) -> None:
+        """Gera o texto da escala atual e copia para a área de transferência."""
+        if self.escala_ativa is None:
+            mostrar_info(self, "Gere ou selecione uma escala antes de copiar.")
+            return
+
+        texto = gerar_texto_whatsapp(self.escala_ativa, self.dados)
+        self.clipboard_clear()
+        self.clipboard_append(texto)
+
+        texto_original = self.btn_copiar.cget("text")
+        self.btn_copiar.configure(text="✅ Copiado!")
+        self.after(2000, lambda: self.btn_copiar.configure(text=texto_original))
+
+    def _selecionar_esta_semana(self) -> None:
+        """Ajusta a data de início para a segunda-feira atual."""
+        self.data_inicio = inicio_da_semana(date.today())
+        self.btn_outra_data.configure(text="Escolher data…")
+
+    def _selecionar_proxima_semana(self) -> None:
+        """Ajusta a data de início para a segunda-feira da próxima semana."""
+        self.data_inicio = inicio_da_semana(date.today()) + timedelta(days=7)
+        self.btn_outra_data.configure(text="Escolher data…")
+
+    def _abrir_dialogo_escolher_data(self) -> None:
+        """Abre modal para digitar data customizada de início."""
+        janela = ctk.CTkToplevel(self)
+        configurar_janela_modal(janela, self.winfo_toplevel(), "Escolher data de início", 380, 220)
+
+        lbl = ctk.CTkLabel(janela, text="Data de início (dd/mm/aaaa):", font=FONTE_CORPO, text_color=COR_TEXTO)
+        lbl.pack(padx=24, pady=(20, 6), anchor="w")
+
+        campo = ctk.CTkEntry(janela, placeholder_text="Ex.: 07/11/2026", height=36)
+        campo.insert(0, formatar_data(self.data_inicio) + f"/{self.data_inicio.year}")
+        campo.pack(fill="x", padx=24, pady=(0, 20))
+
+        def _salvar():
+            try:
+                data_lida = ler_data(campo.get())
+                self.data_inicio = data_lida
+                self.btn_outra_data.configure(text=formatar_data(data_lida))
+                janela.destroy()
+            except ErroEscala as err:
+                mostrar_erro(janela, str(err))
+
+        campo.bind("<Return>", lambda _: _salvar())
+
+        botoes = ctk.CTkFrame(janela, fg_color="transparent")
+        botoes.pack(fill="x", padx=24, pady=(0, 16))
+
+        btn_canc = BotaoGrande(botoes, "Cancelar", janela.destroy, variante="secundaria", height=36)
+        btn_canc.pack(side="left", expand=True, padx=(0, 6))
+
+        btn_ok = BotaoGrande(botoes, "OK", _salvar, variante="primaria", height=36)
+        btn_ok.pack(side="right", expand=True, padx=(6, 0))
+
+    def _abrir_janela_feriados(self) -> None:
+        """Abre o diálogo de feriados."""
+        JanelaFeriado(
+            pai=self.winfo_toplevel(),
+            dados=self.dados,
+            ao_mudar=self.ao_mudar,
+            data_sugerida=self.data_inicio,
+        )
+
+    def _abrir_quadro_justica(self) -> None:
+        """Abre o diálogo do Quadro de Justiça."""
+        JanelaJustica(pai=self.winfo_toplevel(), dados=self.dados)
+
+    def _abrir_historico(self) -> None:
+        """Abre o diálogo do Histórico de escalas anteriores."""
+        JanelaHistorico(
+            pai=self.winfo_toplevel(),
+            dados=self.dados,
+            ao_mudar=self.ao_mudar,
+            ao_selecionar_para_ver=self._visualizar_escala_historico,
+        )
+
+    def _visualizar_escala_historico(self, escala: Escala) -> None:
+        """Define a escala do histórico como a ativa na tela."""
+        self.escala_ativa = escala
+        self.atualizar_tela()

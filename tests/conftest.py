@@ -59,3 +59,17 @@ def dados_padrao(equipe_28: list[Pessoa]) -> DadosDoPrograma:
         rascunho=None,
         proximo_id=len(equipe_28) + 1,
     )
+
+
+@pytest.fixture(scope="session")
+def app_janela_compartilhada():
+    """Mantém uma única instância de JanelaPrincipal para toda a sessão de testes."""
+    from src.escala.interface.janela_principal import JanelaPrincipal
+
+    app = JanelaPrincipal(dados=DadosDoPrograma())
+    app.withdraw()
+    yield app
+    try:
+        app.destroy()
+    except Exception:
+        pass

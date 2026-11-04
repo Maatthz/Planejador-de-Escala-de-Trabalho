@@ -820,7 +820,7 @@ pyinstaller --onefile --windowed --name PlanejadorEscala --collect-data customtk
 | 2 ✅ | `historico.py`, `gerador.py`, `edicao.py` + testes | Concluída | algoritmo guloso, ordenação por tupla, conjuntos, dicionários, deepcopy, fonte única da verdade |
 | 3 ✅ | `exportar.py`, `textos_ajuda.py` + testes | Concluída | f-strings, formatação |
 | 4 ✅ | Interface base + Design System (`componentes.py`) + aba Equipe | Concluída | GUI, Design System, fluxo unidirecional, eventos, callbacks |
-| 5 | Aba Folgas + `CalendarioMensal` | Folgas marcadas aparecem e são respeitadas na geração | layout em grade, responsividade, estados vazios |
+| 5 ✅ | Aba Folgas + `CalendarioMensal` | Concluída | layout em grade, responsividade, estados vazios |
 | 6 | Aba Escala + feriado + quadro de justiça + histórico + copiar | Gerar → trocar → confirmar → copiar + quadro de justiça funcionando ponta a ponta | integração lógica ↔ interface, janelas modais, área de transferência |
 | 7 | ⚙️ Configurações com ajuda | Todas as opções da seção 4.2 alteram o comportamento; "Restaurar padrão" funciona | parametrização, validação de entrada |
 | 8 | `iniciar.py` + `.exe` manual | `.exe` abre num PC sem Python | empacotamento |
@@ -878,6 +878,6 @@ pyinstaller --onefile --windowed --name PlanejadorEscala --collect-data customtk
 
 | Item | Situação |
 |---|---|
-| Fase atual | **Fase 4 concluída** → próxima: **Fase 5** |
+| Fase atual | **Fase 5 concluída** → próxima: **Fase 6** |
 | Repositório GitHub | Ainda não criado (`REPOSITORIO_GITHUB` vazio) |
-| Último commit relevante | Fase 4: interface base, design system e aba equipe |
+| Último commit relevante | Fase 5: aba folgas e calendario mensal com testes |

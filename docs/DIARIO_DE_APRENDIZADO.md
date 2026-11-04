@@ -141,3 +141,18 @@ e `janela_justica.py` na interface).
 - **Fluxo unidirecional de estado:** arquitetura onde o estado da aplicação flui em sentido único (Dados → Interface → Ação do Usuário → Camada de Lógica → Salvamento → Re-renderização), evitando que telas fiquem dessincronizadas com o arquivo em disco.
 - **Eventos:** sinais emitidos pelo sistema operacional em resposta a ações do usuário (clique de mouse, tecla pressionada como `Enter` ou `Esc`).
 - **Callbacks:** funções passadas como argumentos para serem executadas quando um evento específico acontecer (ex.: `command=self.ao_mudar`).
+
+## 04/11/2026 — Fase 5: Aba Folgas e Calendário Mensal
+
+**O que mudou:** implementado o componente nativo de calendário mensal em grade (`CalendarioMensal`) e a aba de gestão de folgas e férias (`tela_folgas.py`), integrada à janela principal com fluxo de persistência e validação, somando 75 testes automatizados verdes.
+
+**Decisões:**
+- Calendário 100% nativo construído com CustomTkinter e a biblioteca padrão `calendar` (sem dependência de `tkcalendar`), garantindo portabilidade perfeita no PyInstaller.
+- Layout responsivo em duas colunas: seleção de integrantes à esquerda com badge de folgas futuras, e detalhes com calendário interativo à direita.
+- Destaque visual semântico: dias marcados ficam vermelhos (`COR_PERIGO`), e o clique direto alterna o status da data instantaneamente.
+- Registro facilitado de férias: modal para selecionar intervalo de datas (de/até), preenchendo todos os dias de ausência de uma vez só.
+
+**Conceitos aprendidos:**
+- **Layout em grade (Grid Layout):** gerenciador de geometria (`grid`, `row`, `column`, `weight`) que distribui elementos em linhas e colunas alinhadas, essencial para construir o calendário 7x6 e dividir a tela em proporções fixas e expansíveis.
+- **Responsividade:** capacidade da interface gráfica de redimensionar seus componentes proporcionalmente (`grid_columnconfigure(..., weight=1)`) quando o usuário estica ou maximiza a janela.
+- **Estados vazios (Empty States):** padrão de design que apresenta mensagens acolhedoras e orientativas quando uma tela ou seleção ainda não possui dados (ex.: orientar o usuário a escolher um integrante para ver suas folgas).

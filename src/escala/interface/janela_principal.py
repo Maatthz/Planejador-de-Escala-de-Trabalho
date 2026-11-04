@@ -24,6 +24,7 @@ from src.escala.interface.componentes import (
     mostrar_info,
 )
 from src.escala.interface.tela_equipe import TelaEquipe
+from src.escala.interface.tela_folgas import TelaFolgas
 from src.escala.modelos import DadosDoPrograma
 from src.escala.versao import VERSAO
 
@@ -102,7 +103,7 @@ class JanelaPrincipal(ctk.CTk):
         self.tab_folgas = self.tabview.add("📅 Folgas")
         self.tab_escala = self.tabview.add("📋 Escala")
 
-        # Aba Equipe (implementada nesta Fase 4)
+        # Aba Equipe (implementada na Fase 4)
         self.tela_equipe = TelaEquipe(
             master=self.tab_equipe,
             dados=self.dados,
@@ -110,12 +111,15 @@ class JanelaPrincipal(ctk.CTk):
         )
         self.tela_equipe.pack(fill="both", expand=True)
 
-        # Placeholders para as próximas fases
-        self._construir_placeholder_aba(
-            self.tab_folgas,
-            "📅 Gestão de Folgas e Férias",
-            "O calendário mensal de marcação de folgas e ausências será ativado na Fase 5.",
+        # Aba Folgas (implementada na Fase 5)
+        self.tela_folgas = TelaFolgas(
+            master=self.tab_folgas,
+            dados=self.dados,
+            ao_mudar=self.ao_mudar,
         )
+        self.tela_folgas.pack(fill="both", expand=True)
+
+        # Placeholder para a Fase 6
         self._construir_placeholder_aba(
             self.tab_escala,
             "📋 Geração e Edição de Escalas",
@@ -144,3 +148,5 @@ class JanelaPrincipal(ctk.CTk):
         """Salva o estado único e atualiza todas as visualizações (fluxo unidirecional)."""
         salvar(self.dados)
         self.tela_equipe.atualizar_tela()
+        if hasattr(self, "tela_folgas"):
+            self.tela_folgas.atualizar_tela()

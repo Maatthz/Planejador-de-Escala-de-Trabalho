@@ -1,10 +1,19 @@
 """Fixtures compartilhadas para os testes do Planejador de Escala."""
 
 from datetime import date
+import os
 from pathlib import Path
+import tkinter
 import pytest
 
 from src.escala.modelos import Configuracao, DadosDoPrograma, Pessoa
+
+try:
+    _tcl_lib = tkinter.Tcl().eval("info library")
+    if _tcl_lib and os.path.exists(_tcl_lib):
+        os.environ.setdefault("TCL_LIBRARY", _tcl_lib)
+except Exception:
+    pass
 
 
 @pytest.fixture

@@ -124,3 +124,20 @@ e `janela_justica.py` na interface).
 **Conceitos aprendidos:**
 - **f-strings (Formatted string literals):** recurso do Python (`f"texto {variavel}"`) que permite interpolar valores, expressões e aplicar formatações (como `:02d` ou `.capitalize()`) diretamente dentro de strings com alta performance e legibilidade.
 - **Formatação de texto estruturado:** composição de texto em blocos usando métodos como `str.join()`, `strip()` e quebras de linha controladas (`\n\n`) para produzir saídas padronizadas e agradáveis para aplicativos de mensagens.
+
+## 04/11/2026 — Fase 4: Interface Base, Design System e Aba Equipe
+
+**O que mudou:** construída a fundação visual da aplicação com CustomTkinter: tokens visuais e componentes padronizados (`componentes.py`), janela principal com abas e cabeçalho (`janela_principal.py`), e a aba funcional de gerenciamento de membros da equipe (`tela_equipe.py`), atingindo 69 testes automatizados verdes.
+
+**Decisões:**
+- Design System semântico: definição rígida de cores (azul para ação principal, verde para confirmação, cinza para secundárias, vermelho para ações destrutivas) e tipografia `Segoe UI` (mínimo 14px).
+- Fluxo unidirecional de estado: a tela nunca guarda dados em variáveis paralelas; ela apenas renderiza `DadosDoPrograma` e qualquer modificação dispara `ao_mudar()` (salvamento automático + reconstrução visual).
+- Diálogos modais com foco capturado (`grab_set`) e tecla `Esc` para cancelamento rápido.
+- Proteção de histórico: membros presentes em escalas confirmadas não podem ser excluídos definitivamente, apenas desativados.
+
+**Conceitos aprendidos:**
+- **GUI (Graphical User Interface):** interface gráfica com janelas, botões e campos de texto que substitui comandos de terminal por interação visual intuitiva.
+- **Design System:** conjunto centralizado de padrões visuais (tokens de cores, fontes, espaçamentos) e componentes reutilizáveis que garantem identidade visual consistente em todas as telas.
+- **Fluxo unidirecional de estado:** arquitetura onde o estado da aplicação flui em sentido único (Dados → Interface → Ação do Usuário → Camada de Lógica → Salvamento → Re-renderização), evitando que telas fiquem dessincronizadas com o arquivo em disco.
+- **Eventos:** sinais emitidos pelo sistema operacional em resposta a ações do usuário (clique de mouse, tecla pressionada como `Enter` ou `Esc`).
+- **Callbacks:** funções passadas como argumentos para serem executadas quando um evento específico acontecer (ex.: `command=self.ao_mudar`).

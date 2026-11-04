@@ -818,7 +818,7 @@ pyinstaller --onefile --windowed --name PlanejadorEscala --collect-data customtk
 | 0 ✅ | Ambiente, Git, estrutura, janela de teste | Concluída | venv, pip, Git, pacotes |
 | 1 ✅ | `modelos.py`, `datas.py`, `armazenamento.py` + testes | Concluída | dataclasses, type hints, JSON, serialização, pathlib, exceções |
 | 2 ✅ | `historico.py`, `gerador.py`, `edicao.py` + testes | Concluída | algoritmo guloso, ordenação por tupla, conjuntos, dicionários, deepcopy, fonte única da verdade |
-| 3 | `exportar.py`, `textos_ajuda.py` + testes | Texto idêntico ao da seção 10.6; toda configuração tem ajuda | f-strings, formatação |
+| 3 ✅ | `exportar.py`, `textos_ajuda.py` + testes | Concluída | f-strings, formatação |
 | 4 | Interface base + Design System (`componentes.py`) + aba Equipe | Adicionar/editar/desativar persiste após fechar e abrir; tokens visuais aplicados | GUI, Design System, fluxo unidirecional, eventos, callbacks |
 | 5 | Aba Folgas + `CalendarioMensal` | Folgas marcadas aparecem e são respeitadas na geração | layout em grade, responsividade, estados vazios |
 | 6 | Aba Escala + feriado + quadro de justiça + histórico + copiar | Gerar → trocar → confirmar → copiar + quadro de justiça funcionando ponta a ponta | integração lógica ↔ interface, janelas modais, área de transferência |
@@ -878,6 +878,6 @@ pyinstaller --onefile --windowed --name PlanejadorEscala --collect-data customtk
 
 | Item | Situação |
 |---|---|
-| Fase atual | **Fase 2 concluída** → próxima: **Fase 3** |
+| Fase atual | **Fase 3 concluída** → próxima: **Fase 4** |
 | Repositório GitHub | Ainda não criado (`REPOSITORIO_GITHUB` vazio) |
-| Último commit relevante | Fase 2: historico, gerador e edicao com testes |
+| Último commit relevante | Fase 3: exportar e textos de ajuda com testes |

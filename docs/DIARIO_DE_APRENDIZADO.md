@@ -111,3 +111,16 @@ e `janela_justica.py` na interface).
 - **Dicionários (dicts):** estruturas de chave-valor usadas para contadores acumulados e busca rápida de registros.
 - **Deepcopy:** clonagem profunda de estruturas em memória, usada para simular o avanço dos contadores durante a geração sem alterar os dados reais até o rascunho ser confirmado.
 - **Fonte única da verdade:** princípio de arquitetura em que dados derivados (como o quadro de justiça) são sempre calculados a partir dos dados primários (escalas confirmadas), evitando inconsistências.
+
+## 04/11/2026 — Fase 3: Exportação para WhatsApp e Textos de Ajuda
+
+**O que mudou:** implementada a formatação de escala para divulgação no WhatsApp (`exportar.py`) e o catálogo completo de textos explicativos e exemplos para todas as opções de configuração (`textos_ajuda.py`), com 64 testes automatizados verdes.
+
+**Decisões:**
+- Formatação fiel ao padrão do WhatsApp: cabeçalhos com emojis (`📅`, `📋`), títulos em negrito (`*texto*`) e espaçamento limpo entre blocos e duplas.
+- Todas as 12 configurações do programa mais a opção de backup manual possuem título em linguagem não técnica, explicação clara e exemplo prático.
+- Isolamento total de texto: mensagens e dicas ficam centralizadas em `textos_ajuda.py`, facilitando futuras revisões de redação sem alterar código da interface.
+
+**Conceitos aprendidos:**
+- **f-strings (Formatted string literals):** recurso do Python (`f"texto {variavel}"`) que permite interpolar valores, expressões e aplicar formatações (como `:02d` ou `.capitalize()`) diretamente dentro de strings com alta performance e legibilidade.
+- **Formatação de texto estruturado:** composição de texto em blocos usando métodos como `str.join()`, `strip()` e quebras de linha controladas (`\n\n`) para produzir saídas padronizadas e agradáveis para aplicativos de mensagens.

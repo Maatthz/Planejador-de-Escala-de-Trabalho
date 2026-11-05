@@ -10,32 +10,35 @@ import customtkinter as ctk
 
 from src.escala.textos_ajuda import obter_ajuda
 
-# Fixa o modo de aparência como claro para máxima legibilidade e contraste
-ctk.set_appearance_mode("light")
+# Fixa o modo de aparência como escuro (Dark Mode) para conforto visual e menor cansaço ocular
+ctk.set_appearance_mode("dark")
 
-# Tokens Visuais — Paleta Semântica
-COR_FUNDO: str = "#F8FAFC"
-COR_CARTAO: str = "#FFFFFF"
-COR_BORDA: str = "#E2E8F0"
+# Tokens Visuais — Paleta Semântica (Modo Escuro / Dark Mode)
+COR_FUNDO: str = "#0F172A"
+COR_CARTAO: str = "#1E293B"
+COR_BORDA: str = "#334155"
 
-COR_PRIMARIA: str = "#1D4ED8"
-COR_PRIMARIA_HOVER: str = "#1E40AF"
+COR_PRIMARIA: str = "#3B82F6"
+COR_PRIMARIA_HOVER: str = "#2563EB"
 
-COR_SUCESSO: str = "#15803D"
-COR_SUCESSO_HOVER: str = "#166534"
+COR_SUCESSO: str = "#16A34A"
+COR_SUCESSO_HOVER: str = "#15803D"
 
-COR_SECUNDARIA: str = "#E2E8F0"
-COR_SECUNDARIA_TEXTO: str = "#1E293B"
-COR_SECUNDARIA_HOVER: str = "#CBD5E1"
+COR_SECUNDARIA: str = "#334155"
+COR_SECUNDARIA_TEXTO: str = "#F8FAFC"
+COR_SECUNDARIA_HOVER: str = "#475569"
 
-COR_PERIGO: str = "#B91C1C"
-COR_PERIGO_HOVER: str = "#991B1B"
+COR_PERIGO: str = "#DC2626"
+COR_PERIGO_HOVER: str = "#B91C1C"
 
-COR_AVISO_FUNDO: str = "#FEF3C7"
-COR_AVISO_TEXTO: str = "#92400E"
+COR_AVISO_FUNDO: str = "#451A03"
+COR_AVISO_TEXTO: str = "#FDE68A"
 
-COR_TEXTO: str = "#0F172A"
-COR_TEXTO_SUAVE: str = "#475569"
+COR_SUCESSO_FUNDO: str = "#064E3B"
+COR_SUCESSO_TEXTO: str = "#A7F3D0"
+
+COR_TEXTO: str = "#F8FAFC"
+COR_TEXTO_SUAVE: str = "#94A3B8"
 
 # Tokens Visuais — Tipografia Segoe UI
 FONTE_TITULO: tuple[str, int, str] = ("Segoe UI", 20, "bold")

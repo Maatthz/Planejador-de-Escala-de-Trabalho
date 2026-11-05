@@ -674,18 +674,18 @@ A interface segue uma separação rigorosa entre **estado** e **visualização**
 ### 10.2 Design System e Tokens Visuais (`componentes.py`)
 Para a interface parecer limpa, profissional e fácil para uma pessoa leiga, **todas** as telas devem usar as constantes abaixo (proibido espalhar cores ou tamanhos mágicos pelas telas):
 
-- **Modo de aparência fixo**: `ctk.set_appearance_mode("light")` (modo claro). É mais legível em ambientes iluminados e familiar para quem usa papel, WhatsApp Web e Word.
+- **Modo de aparência fixo**: `ctk.set_appearance_mode("dark")` (modo escuro). Proporciona maior conforto visual, reduz o cansaço ocular e destaca os elementos de ação com alto contraste.
 - **Paleta semântica** (cada cor tem um significado único):
   | Token | Cor (Hex) | Uso obrigatório |
   |---|---|---|
-  | `COR_FUNDO` | `#F8FAFC` | Fundo geral da janela |
-  | `COR_CARTAO` | `#FFFFFF` | Fundo dos cartões e painéis (borda `#E2E8F0`, `corner_radius=10`) |
-  | `COR_PRIMARIA` | `#1D4ED8` (hover `#1E40AF`) | **Apenas** a ação principal da tela ("Gerar escala", "+ Adicionar pessoa", "Salvar") |
-  | `COR_SUCESSO` | `#15803D` (hover `#166534`) | Conclusão positiva ("✅ Confirmar escala", "📋 Copiar para WhatsApp") |
-  | `COR_SECUNDARIA` | `#E2E8F0` (texto `#1E293B`, hover `#CBD5E1`) | Ações auxiliares ("Editar", "📊 Quadro de justiça", "📜 Escalas anteriores") |
-  | `COR_PERIGO` | `#B91C1C` (hover `#991B1B`) | Ações destrutivas ("Desativar", "Excluir", "Restaurar padrão") |
-  | `COR_AVISO_FUNDO` / `COR_AVISO_TEXTO` | `#FEF3C7` / `#92400E` | Faixas de aviso (rascunho não confirmado, troca com observação) |
-  | `COR_TEXTO` / `COR_TEXTO_SUAVE` | `#0F172A` / `#475569` | Texto principal / textos de ajuda, exemplos e inativos |
+  | `COR_FUNDO` | `#0F172A` | Fundo geral da janela (Slate 900) |
+  | `COR_CARTAO` | `#1E293B` | Fundo dos cartões e painéis (Slate 800, borda `#334155`, `corner_radius=10`) |
+  | `COR_PRIMARIA` | `#3B82F6` (hover `#2563EB`) | **Apenas** a ação principal da tela ("Gerar escala", "+ Adicionar pessoa", "Salvar") |
+  | `COR_SUCESSO` | `#16A34A` (hover `#15803D`) | Conclusão positiva ("✅ Confirmar escala", "📋 Copiar para WhatsApp") |
+  | `COR_SECUNDARIA` | `#334155` (texto `#F8FAFC`, hover `#475569`) | Ações auxiliares ("Editar", "📊 Quadro de justiça", "📜 Escalas anteriores") |
+  | `COR_PERIGO` | `#DC2626` (hover `#B91C1C`) | Ações destrutivas ("Desativar", "Excluir", "Restaurar padrão") |
+  | `COR_AVISO_FUNDO` / `COR_AVISO_TEXTO` | `#451A03` / `#FDE68A` | Faixas de aviso (rascunho não confirmado, troca com observação) |
+  | `COR_TEXTO` / `COR_TEXTO_SUAVE` | `#F8FAFC` / `#94A3B8` | Texto principal (Slate 50) / textos de ajuda, exemplos e inativos (Slate 400) |
 - **Tipografia** (`Segoe UI`):
   - `FONTE_TITULO = ("Segoe UI", 20, "bold")` — título da aba/janela.
   - `FONTE_SUBTITULO = ("Segoe UI", 16, "bold")` — título de cartão (ex.: "Sábado, 07/11 — Manhã").

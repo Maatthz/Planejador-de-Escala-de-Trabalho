@@ -36,7 +36,9 @@ from src.escala.interface.componentes import (
     COR_SECUNDARIA_HOVER,
     COR_SECUNDARIA_TEXTO,
     COR_SUCESSO,
+    COR_SUCESSO_FUNDO,
     COR_SUCESSO_HOVER,
+    COR_SUCESSO_TEXTO,
     COR_TEXTO,
     COR_TEXTO_SUAVE,
     FONTE_AJUDA,
@@ -258,13 +260,13 @@ class TelaEscala(ctk.CTkFrame):
             )
             lbl.pack(padx=16, pady=8, anchor="w")
         else:
-            faixa = ctk.CTkFrame(self.faixa_status, fg_color="#DCFCE7", corner_radius=8)
+            faixa = ctk.CTkFrame(self.faixa_status, fg_color=COR_SUCESSO_FUNDO, corner_radius=8)
             faixa.pack(fill="x", pady=(0, 6))
             lbl = ctk.CTkLabel(
                 faixa,
                 text="✅ Escala confirmada e salva no histórico.",
                 font=FONTE_CORPO,
-                text_color="#166534",
+                text_color=COR_SUCESSO_TEXTO,
             )
             lbl.pack(padx=16, pady=8, anchor="w")
 
@@ -323,7 +325,7 @@ class TelaEscala(ctk.CTkFrame):
         cartao.pack(fill="x", pady=6)
 
         # Cabeçalho do plantão com fundo suave
-        cor_topo = "#FEF3C7" if plantao.eh_feriado else "#F1F5F9"
+        cor_topo = COR_AVISO_FUNDO if plantao.eh_feriado else COR_FUNDO
         topo = ctk.CTkFrame(cartao, fg_color=cor_topo, corner_radius=8)
         topo.pack(fill="x", padx=12, pady=(12, 8))
 

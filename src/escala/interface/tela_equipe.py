@@ -22,6 +22,7 @@ from src.escala.interface.componentes import (
     FONTE_TITULO,
     BotaoGrande,
     CartaoFrame,
+    RotuloSimples,
     configurar_janela_modal,
     configurar_rolagem_suave,
     mostrar_erro,
@@ -144,21 +145,23 @@ class TelaEquipe(ctk.CTkFrame):
             cor_nome = COR_TEXTO
             fonte_nome = ("Segoe UI", 14, "bold")
 
-        lbl_nome = ctk.CTkLabel(
+        lbl_nome = RotuloSimples(
             cartao,
             text=texto_nome,
             font=fonte_nome,
             text_color=cor_nome,
+            fg_color=COR_CARTAO,
             anchor="w",
         )
         lbl_nome.pack(side="left", padx=(14, 0), pady=8)
 
         # 2. Estrela amarela para experientes ativos
-        lbl_estrela = ctk.CTkLabel(
+        lbl_estrela = RotuloSimples(
             cartao,
             text="★" if (pessoa.ativo and pessoa.experiente) else "",
             font=("Segoe UI", 16, "bold"),
             text_color=COR_ESTRELA,
+            fg_color=COR_CARTAO,
         )
         lbl_estrela.pack(side="left", padx=(6, 0), pady=8)
 

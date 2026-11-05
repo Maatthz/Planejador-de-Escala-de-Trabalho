@@ -6,6 +6,7 @@ trocar integrantes manualmente, validar regras, confirmar e copiar para o WhatsA
 
 from collections.abc import Callable
 from datetime import date, timedelta
+import tkinter as tk
 import customtkinter as ctk
 
 from src.escala.datas import (
@@ -49,8 +50,10 @@ from src.escala.interface.componentes import (
     FONTE_TITULO,
     BotaoGrande,
     CartaoFrame,
+    RotuloSimples,
     configurar_janela_modal,
     configurar_rolagem_suave,
+    congelar_redesenho,
     mostrar_erro,
     mostrar_info,
     perguntar_sim_nao,
@@ -81,6 +84,11 @@ class TelaEscala(ctk.CTkFrame):
         self._modo_periodo: str = "esta"
         # Escala ativa sendo exibida (pode ser o rascunho ou uma do histórico)
         self.escala_ativa: Escala | None = self.dados.rascunho
+
+        # Cache de estrutura e estado para reuso de widgets in-place (sem destroy repetido)
+        self._estado_faixa_status: tuple | None = ("__inicial__",)
+        self._estrutura_plantoes: tuple[int, ...] | str | None = None
+        self._cartoes_plantoes: list[dict] = []
 
         self._construir_interface()
         if inicializar_agora:
@@ -245,6 +253,17 @@ class TelaEscala(ctk.CTkFrame):
 
     def _atualizar_faixa_status(self) -> None:
         """Renderiza a faixa de status (rascunho ou confirmada) e avisos de validação."""
+        if self.escala_ativa is None:
+            novo_estado = None
+            avisos: tuple[str, ...] = ()
+        else:
+            avisos = tuple(validar_escala(self.escala_ativa, self.dados))
+            novo_estado = (self.escala_ativa.confirmada, avisos)
+
+        if self._estado_faixa_status == novo_estado:
+            return
+        self._estado_faixa_status = novo_estado
+
         for filho in self.faixa_status.winfo_children():
             filho.destroy()
 
@@ -274,7 +293,6 @@ class TelaEscala(ctk.CTkFrame):
             lbl.pack(padx=16, pady=8, anchor="w")
 
         # Avisos de validação
-        avisos = validar_escala(self.escala_ativa, self.dados)
         if avisos:
             caixa_aviso = ctk.CTkFrame(self.faixa_status, fg_color=COR_AVISO_FUNDO, corner_radius=8)
             caixa_aviso.pack(fill="x", pady=(0, 6))
@@ -297,16 +315,35 @@ class TelaEscala(ctk.CTkFrame):
             ctk.CTkLabel(caixa_aviso, text="", height=4).pack()
 
     def _atualizar_cartoes_plantoes(self) -> None:
-        """Renderiza os cartões dos plantões e das duplas."""
-        for filho in self.scroll_plantoes.winfo_children():
-            filho.destroy()
-
+        """Renderiza ou atualiza in-place os cartões dos plantões e das duplas."""
         if self.escala_ativa is None:
-            self._mostrar_estado_vazio()
+            if self._estrutura_plantoes != "vazio":
+                for filho in self.scroll_plantoes.winfo_children():
+                    filho.destroy()
+                self._cartoes_plantoes.clear()
+                self._mostrar_estado_vazio()
+                self._estrutura_plantoes = "vazio"
             return
 
-        for idx_plantao, plantao in enumerate(self.escala_ativa.plantoes):
-            self._criar_cartao_plantao(plantao, idx_plantao)
+        estrutura_atual = tuple(len(p.duplas) for p in self.escala_ativa.plantoes)
+        if self._estrutura_plantoes != estrutura_atual:
+            with congelar_redesenho(self.scroll_plantoes):
+                for filho in self.scroll_plantoes.winfo_children():
+                    filho.destroy()
+                self._cartoes_plantoes = [
+                    self._criar_esqueleto_cartao_plantao(qtd_duplas)
+                    for qtd_duplas in estrutura_atual
+                ]
+                self._estrutura_plantoes = estrutura_atual
+                try:
+                    self.scroll_plantoes._parent_canvas.yview_moveto(0.0)
+                except Exception:
+                    pass
+
+        for idx_plantao, (cartao_info, plantao) in enumerate(
+            zip(self._cartoes_plantoes, self.escala_ativa.plantoes)
+        ):
+            self._preencher_cartao_plantao(cartao_info, plantao, idx_plantao)
 
     def _mostrar_estado_vazio(self) -> None:
         """Orienta o usuário a gerar uma escala quando nenhuma está ativa."""
@@ -322,51 +359,40 @@ class TelaEscala(ctk.CTkFrame):
         )
         lbl.pack(expand=True)
 
-    def _criar_cartao_plantao(self, plantao: Plantao, idx_plantao: int) -> None:
-        """Cria o cartão do turno com cabeçalho destacado e grade de duplas planas."""
+    def _criar_esqueleto_cartao_plantao(self, qtd_duplas: int) -> dict:
+        """Instancia os widgets estruturais de um plantão uma única vez para reuso in-place."""
         cartao = CartaoFrame(self.scroll_plantoes)
         cartao.pack(fill="x", pady=6)
 
-        # Cabeçalho do plantão com fundo suave
-        cor_topo = COR_AVISO_FUNDO if plantao.eh_feriado else COR_FUNDO
-        topo = ctk.CTkFrame(cartao, fg_color=cor_topo, corner_radius=8)
+        topo = ctk.CTkFrame(cartao, fg_color=COR_FUNDO, corner_radius=8)
         topo.pack(fill="x", padx=12, pady=(12, 8))
 
-        dia_txt = formatar_dia_completo(plantao.data)
-        per_txt = plantao.periodo.capitalize()
-        fer_txt = f" (Feriado: {plantao.nome_feriado})" if plantao.eh_feriado and plantao.nome_feriado else ""
-
-        lbl_tit = ctk.CTkLabel(
+        lbl_tit = RotuloSimples(
             topo,
-            text=f"📅 {dia_txt} — {per_txt}{fer_txt}",
+            text="",
             font=FONTE_SUBTITULO,
             text_color=COR_TEXTO,
+            fg_color=COR_FUNDO,
             anchor="w",
         )
         lbl_tit.pack(side="left", padx=12, pady=8)
 
-        qtd_duplas = len(plantao.duplas)
-        resumo_duplas = f"{qtd_duplas} duplas • Clique em um nome para trocar" if qtd_duplas != 1 else "1 dupla • Clique em um nome para trocar"
-        lbl_resumo = ctk.CTkLabel(
+        lbl_resumo = RotuloSimples(
             topo,
-            text=resumo_duplas,
+            text="",
             font=("Segoe UI", 12),
             text_color=COR_TEXTO_SUAVE,
+            fg_color=COR_FUNDO,
         )
         lbl_resumo.pack(side="right", padx=12, pady=8)
 
-        # Grade em 2 colunas para exibição equilibrada e plana das duplas
-        frame_grid = ctk.CTkFrame(cartao, fg_color="transparent")
+        frame_grid = tk.Frame(cartao, bg=COR_CARTAO, bd=0, highlightthickness=0)
         frame_grid.pack(fill="x", padx=12, pady=(2, 10))
         frame_grid.grid_columnconfigure(0, weight=1, uniform="col_dupla")
         frame_grid.grid_columnconfigure(1, weight=1, uniform="col_dupla")
 
-        for num_dupla, dupla in enumerate(plantao.duplas, start=1):
-            p_a = self.dados.buscar_pessoa(dupla.pessoa_a)
-            p_b = self.dados.buscar_pessoa(dupla.pessoa_b)
-            nome_a = p_a.nome if p_a else f"ID {dupla.pessoa_a}"
-            nome_b = p_b.nome if p_b else f"ID {dupla.pessoa_b}"
-
+        slots: list[dict] = []
+        for num_dupla in range(1, qtd_duplas + 1):
             card_dupla = ctk.CTkFrame(
                 frame_grid,
                 fg_color=COR_FUNDO,
@@ -374,83 +400,150 @@ class TelaEscala(ctk.CTkFrame):
                 corner_radius=8,
             )
 
-            # Posicionamento na grade: 2 por linha; se for a única ou última ímpar, ocupa as 2 colunas
-            if len(plantao.duplas) == 1:
+            if qtd_duplas == 1:
                 card_dupla.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=4, pady=4)
             else:
                 linha_idx = (num_dupla - 1) // 2
                 col_idx = (num_dupla - 1) % 2
-                if num_dupla == len(plantao.duplas) and col_idx == 0:
+                if num_dupla == qtd_duplas and col_idx == 0:
                     card_dupla.grid(row=linha_idx, column=0, columnspan=2, sticky="nsew", padx=4, pady=4)
                 else:
                     card_dupla.grid(row=linha_idx, column=col_idx, sticky="nsew", padx=4, pady=4)
 
-            # 1. Rótulo com número
-            lbl_num = ctk.CTkLabel(
+            lbl_num = RotuloSimples(
                 card_dupla,
                 text=f"{num_dupla}.",
-                width=24,
                 font=("Segoe UI", 13, "bold"),
                 text_color=COR_TEXTO_SUAVE,
+                fg_color=COR_FUNDO,
             )
             lbl_num.pack(side="left", padx=(8, 4), pady=6)
 
-            # 2. Botão da Pessoa A (clique abre troca)
             btn_a = ctk.CTkButton(
                 card_dupla,
-                text=nome_a,
+                text="",
                 fg_color=COR_CARTAO,
                 hover_color=COR_SECUNDARIA_HOVER,
                 text_color=COR_TEXTO,
                 font=("Segoe UI", 14, "bold"),
                 height=34,
                 anchor="w",
-                command=lambda ip=idx_plantao, sa=dupla.pessoa_a: self._abrir_dialogo_troca(ip, sa),
             )
             btn_a.pack(side="left", fill="x", expand=True, padx=(2, 2), pady=4)
 
-            if p_a and p_a.experiente:
-                lbl_est_a = ctk.CTkLabel(
-                    card_dupla,
-                    text="★",
-                    font=("Segoe UI", 15, "bold"),
-                    text_color=COR_ESTRELA,
-                )
-                lbl_est_a.pack(side="left", padx=(0, 4), pady=4)
-                lbl_est_a.bind("<Button-1>", lambda _, ip=idx_plantao, sa=dupla.pessoa_a: self._abrir_dialogo_troca(ip, sa))
+            lbl_est_a = RotuloSimples(
+                card_dupla,
+                text="",
+                font=("Segoe UI", 15, "bold"),
+                text_color=COR_ESTRELA,
+                fg_color=COR_FUNDO,
+            )
+            lbl_est_a.pack(side="left", padx=(0, 4), pady=4)
 
-            # 3. Separador "&"
-            lbl_sep = ctk.CTkLabel(
+            lbl_sep = RotuloSimples(
                 card_dupla,
                 text="&",
                 font=FONTE_AJUDA,
                 text_color=COR_TEXTO_SUAVE,
+                fg_color=COR_FUNDO,
             )
             lbl_sep.pack(side="left", padx=4, pady=6)
 
-            # 4. Botão da Pessoa B (clique abre troca)
             btn_b = ctk.CTkButton(
                 card_dupla,
-                text=nome_b,
+                text="",
                 fg_color=COR_CARTAO,
                 hover_color=COR_SECUNDARIA_HOVER,
                 text_color=COR_TEXTO,
                 font=("Segoe UI", 14, "bold"),
                 height=34,
                 anchor="w",
-                command=lambda ip=idx_plantao, sb=dupla.pessoa_b: self._abrir_dialogo_troca(ip, sb),
             )
             btn_b.pack(side="left", fill="x", expand=True, padx=(2, 2), pady=4)
 
-            if p_b and p_b.experiente:
-                lbl_est_b = ctk.CTkLabel(
-                    card_dupla,
-                    text="★",
-                    font=("Segoe UI", 15, "bold"),
-                    text_color=COR_ESTRELA,
+            lbl_est_b = RotuloSimples(
+                card_dupla,
+                text="",
+                font=("Segoe UI", 15, "bold"),
+                text_color=COR_ESTRELA,
+                fg_color=COR_FUNDO,
+            )
+            lbl_est_b.pack(side="left", padx=(0, 6), pady=4)
+
+            slots.append(
+                {
+                    "btn_a": btn_a,
+                    "lbl_est_a": lbl_est_a,
+                    "estado_a": None,
+                    "btn_b": btn_b,
+                    "lbl_est_b": lbl_est_b,
+                    "estado_b": None,
+                }
+            )
+
+        return {
+            "cartao": cartao,
+            "topo": topo,
+            "lbl_tit": lbl_tit,
+            "lbl_resumo": lbl_resumo,
+            "estado_cabecalho": None,
+            "slots": slots,
+        }
+
+    def _preencher_cartao_plantao(self, cartao_info: dict, plantao: Plantao, idx_plantao: int) -> None:
+        """Atualiza in-place apenas os textos e comandos que mudaram no cartão do plantão."""
+        cor_topo = COR_AVISO_FUNDO if plantao.eh_feriado else COR_FUNDO
+        dia_txt = formatar_dia_completo(plantao.data)
+        per_txt = plantao.periodo.capitalize()
+        fer_txt = f" (Feriado: {plantao.nome_feriado})" if plantao.eh_feriado and plantao.nome_feriado else ""
+        texto_tit = f"📅 {dia_txt} — {per_txt}{fer_txt}"
+
+        qtd_duplas = len(plantao.duplas)
+        resumo_duplas = (
+            f"{qtd_duplas} duplas • Clique em um nome para trocar"
+            if qtd_duplas != 1
+            else "1 dupla • Clique em um nome para trocar"
+        )
+        estado_cabecalho = (cor_topo, texto_tit, resumo_duplas)
+        if cartao_info["estado_cabecalho"] != estado_cabecalho:
+            cartao_info["topo"].configure(fg_color=cor_topo)
+            cartao_info["lbl_tit"].configure(text=texto_tit, fg_color=cor_topo)
+            cartao_info["lbl_resumo"].configure(text=resumo_duplas, fg_color=cor_topo)
+            cartao_info["estado_cabecalho"] = estado_cabecalho
+
+        for slot, dupla in zip(cartao_info["slots"], plantao.duplas):
+            p_a = self.dados.buscar_pessoa(dupla.pessoa_a)
+            p_b = self.dados.buscar_pessoa(dupla.pessoa_b)
+            nome_a = p_a.nome if p_a else f"ID {dupla.pessoa_a}"
+            exp_a = bool(p_a and p_a.experiente)
+            nome_b = p_b.nome if p_b else f"ID {dupla.pessoa_b}"
+            exp_b = bool(p_b and p_b.experiente)
+
+            estado_a = (idx_plantao, dupla.pessoa_a, nome_a, exp_a)
+            if slot["estado_a"] != estado_a:
+                slot["btn_a"].configure(
+                    text=nome_a,
+                    command=lambda ip=idx_plantao, sa=dupla.pessoa_a: self._abrir_dialogo_troca(ip, sa),
                 )
-                lbl_est_b.pack(side="left", padx=(0, 6), pady=4)
-                lbl_est_b.bind("<Button-1>", lambda _, ip=idx_plantao, sb=dupla.pessoa_b: self._abrir_dialogo_troca(ip, sb))
+                slot["lbl_est_a"].configure(text="★" if exp_a else "")
+                slot["lbl_est_a"].bind(
+                    "<Button-1>",
+                    lambda _, ip=idx_plantao, sa=dupla.pessoa_a: self._abrir_dialogo_troca(ip, sa),
+                )
+                slot["estado_a"] = estado_a
+
+            estado_b = (idx_plantao, dupla.pessoa_b, nome_b, exp_b)
+            if slot["estado_b"] != estado_b:
+                slot["btn_b"].configure(
+                    text=nome_b,
+                    command=lambda ip=idx_plantao, sb=dupla.pessoa_b: self._abrir_dialogo_troca(ip, sb),
+                )
+                slot["lbl_est_b"].configure(text="★" if exp_b else "")
+                slot["lbl_est_b"].bind(
+                    "<Button-1>",
+                    lambda _, ip=idx_plantao, sb=dupla.pessoa_b: self._abrir_dialogo_troca(ip, sb),
+                )
+                slot["estado_b"] = estado_b
 
     def _abrir_dialogo_troca(self, indice_plantao: int, id_sai: int) -> None:
         """Abre modal com lista de opções para substituir uma pessoa no plantão."""

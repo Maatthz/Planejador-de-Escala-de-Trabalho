@@ -92,11 +92,15 @@ class TelaFolgas(ctk.CTkFrame):
         configurar_rolagem_suave(self.scroll_pessoas)
 
         # Painel Direito — Estrutura persistente (evita recriação ao trocar de pessoa)
-        self.painel_direito = ctk.CTkFrame(self, fg_color="transparent")
+        self.painel_direito = ctk.CTkFrame(self, fg_color=COR_FUNDO)
         self.painel_direito.grid(row=0, column=1, sticky="nsew", padx=(10, 20), pady=20)
+        self.painel_direito.grid_rowconfigure(0, weight=1)
+        self.painel_direito.grid_columnconfigure(0, weight=1)
+        self.painel_direito.grid_propagate(False)
 
         # 1. Estado vazio persistente à direita
         self.frame_vazio_direito = CartaoFrame(self.painel_direito)
+        self.frame_vazio_direito.grid(row=0, column=0, sticky="nsew")
         lbl_vazio = ctk.CTkLabel(
             self.frame_vazio_direito,
             text="Nenhuma pessoa selecionada.\n\nSelecione um integrante na lista à esquerda para visualizar,\nmarcar folgas individuais ou registrar períodos de férias.",
@@ -107,7 +111,9 @@ class TelaFolgas(ctk.CTkFrame):
         lbl_vazio.pack(expand=True)
 
         # 2. Conteúdo de folgas persistente à direita
-        self.frame_conteudo_direito = ctk.CTkFrame(self.painel_direito, fg_color="transparent")
+        self.frame_conteudo_direito = ctk.CTkFrame(self.painel_direito, fg_color=COR_FUNDO)
+        self.frame_conteudo_direito.grid(row=0, column=0, sticky="nsew")
+        self.frame_vazio_direito.tkraise()
 
         topo = ctk.CTkFrame(self.frame_conteudo_direito, fg_color="transparent")
         topo.pack(fill="x", pady=(0, 12))
@@ -272,18 +278,15 @@ class TelaFolgas(ctk.CTkFrame):
         self._atualizar_painel_direito()
 
     def _atualizar_painel_direito(self) -> None:
-        """Alterna entre estado vazio e conteúdo de folgas, reaproveitando o calendário."""
+        """Alterna entre estado vazio e conteúdo de folgas via tkraise, reaproveitando o calendário."""
         if self.pessoa_selecionada is None:
-            self.frame_conteudo_direito.pack_forget()
-            self.frame_vazio_direito.pack(fill="both", expand=True)
+            self.frame_vazio_direito.tkraise()
             return
-
-        self.frame_vazio_direito.pack_forget()
-        self.frame_conteudo_direito.pack(fill="both", expand=True)
 
         self.lbl_nome_pessoa.configure(text=f"📅 Folgas de {self.pessoa_selecionada.nome}")
         self.calendario.atualizar_datas_marcadas(self.pessoa_selecionada.indisponibilidades)
         self._construir_lista_datas_registradas()
+        self.frame_conteudo_direito.tkraise()
 
     def _construir_lista_datas_registradas(self) -> None:
         """Exibe os dias marcados organizados em ordem cronológica com botão de remoção."""

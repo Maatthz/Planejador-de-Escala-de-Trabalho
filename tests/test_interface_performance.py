@@ -149,3 +149,25 @@ def test_tela_escala_destaque_botoes_periodo_e_duplas_planas(
                     encontrou_dupla_plana = True
 
     assert encontrou_dupla_plana, "Deve encontrar pelo menos um frame de dupla plano na grade"
+
+    # 4. Verifica que atualizar_tela() e alternar abas reutilizam os mesmos cartões in-place
+    ids_cartoes_antes = [id(c["cartao"]) for c in app_janela_perf.tela_escala._cartoes_plantoes]
+    ids_botoes_antes = [
+        (id(s["btn_a"]), id(s["btn_b"]))
+        for c in app_janela_perf.tela_escala._cartoes_plantoes
+        for s in c["slots"]
+    ]
+
+    app_janela_perf.tabview.set("👥 Equipe")
+    app_janela_perf.ao_mudar()
+    app_janela_perf.tabview.set("📋 Escala")
+    app_janela_perf.update_idletasks()
+
+    ids_cartoes_depois = [id(c["cartao"]) for c in app_janela_perf.tela_escala._cartoes_plantoes]
+    ids_botoes_depois = [
+        (id(s["btn_a"]), id(s["btn_b"]))
+        for c in app_janela_perf.tela_escala._cartoes_plantoes
+        for s in c["slots"]
+    ]
+    assert ids_cartoes_depois == ids_cartoes_antes
+    assert ids_botoes_depois == ids_botoes_antes

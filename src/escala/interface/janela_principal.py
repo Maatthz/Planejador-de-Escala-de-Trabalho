@@ -20,6 +20,7 @@ from src.escala.interface.componentes import (
     FONTE_CORPO,
     FONTE_SUBTITULO,
     FONTE_TITULO,
+    AbasRapidas,
     BotaoGrande,
     CartaoFrame,
     mostrar_info,
@@ -53,6 +54,7 @@ class JanelaPrincipal(ctk.CTk):
         self._abas_desatualizadas: set[str] = {"folgas", "escala"}
 
         self._construir_interface()
+        self.after(600, self._pre_aquecer_folgas)
 
         # Se houve recuperação de backup, alerta o usuário de forma amigável
         if self.aviso_inicial:
@@ -103,10 +105,10 @@ class JanelaPrincipal(ctk.CTk):
         div_rodape = ctk.CTkFrame(self, height=1, fg_color=COR_BORDA, corner_radius=0)
         div_rodape.pack(fill="x", side="bottom")
 
-        # Sistema de Abas Navegáveis (com botões grandes e destacados)
-        self.tabview = ctk.CTkTabview(
+        # Sistema de Abas Navegáveis (empilhadas com tkraise para troca instantânea)
+        self.tabview = AbasRapidas(
             self,
-            fg_color="transparent",
+            fg_color=COR_FUNDO,
             command=self._ao_trocar_aba,
             segmented_button_selected_color=COR_PRIMARIA,
             segmented_button_selected_hover_color=COR_PRIMARIA_HOVER,
@@ -161,6 +163,31 @@ class JanelaPrincipal(ctk.CTk):
 
         lbl_s = ctk.CTkLabel(frame, text=subtitulo, font=FONTE_CORPO, text_color=COR_TEXTO_SUAVE)
         lbl_s.pack(pady=(0, 60))
+
+    def _pre_aquecer_folgas(self) -> None:
+        """Pré-carrega os widgets da aba Folgas em segundo plano após exibir a janela."""
+        if not self.winfo_exists():
+            return
+        if "folgas" in self._abas_desatualizadas and hasattr(self, "tela_folgas"):
+            self.tela_folgas.atualizar_tela()
+            self._abas_desatualizadas.discard("folgas")
+        self.tabview._garantir_aba_mapeada("📅 Folgas")
+        aba_atual = self.tabview.get()
+        if aba_atual in self.tabview._tab_dict:
+            self.tabview._tab_dict[aba_atual].tkraise()
+        self.after(100, self._pre_aquecer_escala)
+
+    def _pre_aquecer_escala(self) -> None:
+        """Pré-carrega os widgets da aba Escala em segundo plano após exibir a janela."""
+        if not self.winfo_exists():
+            return
+        if "escala" in self._abas_desatualizadas and hasattr(self, "tela_escala"):
+            self.tela_escala.atualizar_tela()
+            self._abas_desatualizadas.discard("escala")
+        self.tabview._garantir_aba_mapeada("📋 Escala")
+        aba_atual = self.tabview.get()
+        if aba_atual in self.tabview._tab_dict:
+            self.tabview._tab_dict[aba_atual].tkraise()
 
     def _abrir_configuracoes(self) -> None:
         """Abre a janela modal de configurações completas com textos de ajuda."""

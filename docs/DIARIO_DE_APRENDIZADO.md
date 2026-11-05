@@ -288,3 +288,16 @@ em uma pessoa na aba Folgas), o `AGENTS.md` recebeu as seções **10.4 (Regras d
 **Conceitos aprendidos:**
 - **Memoização / Dirty Checking na UI:** guardar o último estado desenhado de um componente e só chamar a função de redesenho (`.configure()`) quando o estado novo for diferente do anterior.
 - **Custo oculto de `.configure()` no CustomTkinter:** mesmo sem `destroy()`, chamar `.configure(fg_color=...)` sem necessidade força o `tk.Canvas` interno a redesenhar formas vetoriais.
+
+## 04/11/2026 — Eliminação do Gargalo de Troca de Abas (`tkraise` + Reuso In-Place na `TelaEscala` + `RotuloSimples`)
+
+**O que mudou:** eliminada a lentidão e o efeito cascata ao alternar entre `👥 Equipe`, `📅 Folgas` e `📋 Escala` por meio de quatro otimizações estruturais em `componentes.py`, `janela_principal.py`, `tela_escala.py`, `tela_equipe.py` e `tela_folgas.py`:
+1. **`AbasRapidas` (`componentes.py`):** subclasse de `CTkTabview` que mantém as abas mapeadas na mesma célula da grade com `pack_propagate(False)` / `grid_propagate(False)` e alterna entre elas com `.tkraise()`, eliminando o `grid_forget()` + `grid()` que o `CTkTabview` padrão executava a cada clique.
+2. **Reuso in-place na `TelaEscala` (`tela_escala.py`):** `_atualizar_cartoes_plantoes` e `_atualizar_faixa_status` deixaram de destruir todos os ~300 widgets a cada atualização (`617 ms`) e passaram a reutilizar o esqueleto de cartões, botões e estrelas in-place (`0,1 ms`).
+3. **`RotuloSimples` (`componentes.py`):** rótulo nativo leve (`tk.Label` = 1 único `HWND`, sem `CTkCanvas` intermediário) com mesma tipografia e escala DPI do CustomTkinter para textos internos repetidos nos cartões de `TelaEquipe` e `TelaEscala`, eliminando mais de 120 instâncias de `CTkCanvas` (~250 `HWND`s do Windows).
+4. **Pré-aquecimento assíncrono (`janela_principal.py`):** após abrir a janela principal, `_pre_aquecer_folgas` e `_pre_aquecer_escala` constroem e mapeiam os widgets das abas secundárias em segundo plano, tornando até o primeiro clique na aba `📋 Escala` instantâneo (`~65 ms`, antes `657–880 ms`).
+
+**Conceitos aprendidos:**
+- **Z-Order Stacking (`tkraise`) vs. Unmapping (`grid_forget`):** desmapear e remapear centenas de janelas filhas (`HWND`s) no Windows força o gerenciador de geometria a recalcular posições de cima para baixo; manter os containers empilhados e apenas alterar a ordem Z (`tkraise`) troca a visualização sem recalcular layout.
+- **Isolamento de Propagação de Geometria (`pack_propagate(False)` / `grid_propagate(False)`):** impede que alterações internas em uma aba façam o Tkinter recalcular o tamanho da janela inteira e das abas vizinhas.
+- **Peso de Widgets Compostos vs. Nativos:** cada `CTkLabel` cria 3 `HWND`s no Windows (`Frame` + `Canvas` + `Label`); em listas grandes com fundo sólido, usar um `tk.Label` nativo reduz em 3× o número de janelas que o sistema operacional precisa pintar.

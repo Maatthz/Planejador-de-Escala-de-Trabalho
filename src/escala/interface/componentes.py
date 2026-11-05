@@ -5,7 +5,11 @@ para garantir consistência e usabilidade acessível a pessoas leigas.
 """
 
 from collections.abc import Callable
+from contextlib import contextmanager
+import ctypes
 from datetime import date
+import sys
+import tkinter as tk
 import customtkinter as ctk
 
 from src.escala.textos_ajuda import obter_ajuda
@@ -314,6 +318,151 @@ def configurar_rolagem_suave(scroll: ctk.CTkScrollableFrame) -> None:
             scroll._parent_canvas.configure(yscrollincrement=24)
     except Exception:
         pass
+
+
+@contextmanager
+def congelar_redesenho(widget):
+    """Congela temporariamente a pintura Win32 (WM_SETREDRAW) para evitar efeito cascata."""
+    hwnd = 0
+    user32 = None
+    if sys.platform == "win32":
+        try:
+            user32 = ctypes.windll.user32
+            hwnd = widget.winfo_id()
+            if hwnd:
+                user32.SendMessageW(hwnd, 0x000B, 0, 0)
+        except Exception:
+            hwnd = 0
+    try:
+        yield
+    finally:
+        if hwnd and user32 is not None:
+            try:
+                widget.update_idletasks()
+                user32.SendMessageW(hwnd, 0x000B, 1, 0)
+                # RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW | RDW_FRAME
+                user32.RedrawWindow(hwnd, None, None, 0x0585)
+            except Exception:
+                pass
+
+
+class RotuloSimples(tk.Label):
+    """Rótulo de texto nativo leve (1 único HWND sem Canvas) compatível com CTkLabel."""
+
+    def __init__(
+        self,
+        master,
+        text: str = "",
+        font: tuple = FONTE_CORPO,
+        text_color: str = COR_TEXTO,
+        fg_color: str | None = None,
+        width: int = 0,
+        anchor: str = "center",
+        justify: str = "left",
+        **kwargs,
+    ) -> None:
+        cor_fundo = fg_color
+        if not cor_fundo or cor_fundo == "transparent":
+            cor_fundo = master.cget("fg_color") if hasattr(master, "cget") else COR_CARTAO
+            if isinstance(cor_fundo, (tuple, list)):
+                cor_fundo = cor_fundo[1]
+            if not cor_fundo or cor_fundo == "transparent":
+                cor_fundo = COR_CARTAO
+        fonte_escalada = (
+            master._apply_font_scaling(font)
+            if hasattr(master, "_apply_font_scaling")
+            else font
+        )
+        self._cor_texto = text_color
+        super().__init__(
+            master,
+            text=text,
+            font=fonte_escalada,
+            fg=text_color,
+            bg=cor_fundo,
+            bd=0,
+            highlightthickness=0,
+            anchor=anchor,
+            justify=justify,
+            width=width,
+            **kwargs,
+        )
+
+    def configure(self, **kwargs) -> None:
+        """Atualiza propriedades aceitando os mesmos nomes do CustomTkinter."""
+        if "text_color" in kwargs:
+            cor = kwargs.pop("text_color")
+            self._cor_texto = cor
+            kwargs["fg"] = cor
+        if "fg_color" in kwargs:
+            kwargs["bg"] = kwargs.pop("fg_color")
+        if "font" in kwargs:
+            fonte = kwargs.pop("font")
+            kwargs["font"] = (
+                self.master._apply_font_scaling(fonte)
+                if hasattr(self.master, "_apply_font_scaling")
+                else fonte
+            )
+        super().configure(**kwargs)
+
+    config = configure
+
+    def cget(self, key: str):
+        """Retorna propriedades compatíveis com CTkLabel."""
+        if key == "text_color":
+            return self._cor_texto
+        return super().cget(key)
+
+
+class AbasRapidas(ctk.CTkTabview):
+    """Tabview otimizado que mantém abas mapeadas na mesma célula e alterna via tkraise()."""
+
+    def __init__(self, master, **kwargs) -> None:
+        self._abas_mapeadas: set[str] = set()
+        super().__init__(master, **kwargs)
+
+    def insert(self, index: int, name: str) -> ctk.CTkFrame:
+        """Cria a aba isolando a propagação de geometria (pack/grid_propagate=False)."""
+        aba = super().insert(index, name)
+        aba.configure(fg_color=COR_FUNDO)
+        aba.pack_propagate(False)
+        aba.grid_propagate(False)
+        if self._current_name == name:
+            self._abas_mapeadas.add(name)
+        return aba
+
+    def _garantir_aba_mapeada(self, name: str) -> None:
+        """Mapeia a aba na grade na primeira visita e nunca mais usa grid_forget()."""
+        if name not in self._abas_mapeadas:
+            nome_anterior = self._current_name
+            self._current_name = name
+            self._set_grid_current_tab()
+            self._current_name = nome_anterior
+            self._abas_mapeadas.add(name)
+
+    def _segmented_button_callback(self, selected_name: str) -> None:
+        """Troca de aba via tkraise() sem desmapeamento (grid_forget)."""
+        if selected_name == self._current_name:
+            return
+        self._current_name = selected_name
+        if self._command is not None:
+            self._command()
+        self._garantir_aba_mapeada(selected_name)
+        self._tab_dict[selected_name].tkraise()
+
+    def set(self, name: str) -> None:
+        """Seleciona uma aba programaticamente via tkraise() sem grid_forget()."""
+        if name not in self._tab_dict:
+            raise ValueError(f"AbasRapidas não possui a aba '{name}'")
+        if name == self._current_name:
+            self._segmented_button.set(name)
+            return
+        self._current_name = name
+        self._segmented_button.set(name)
+        if self._command is not None:
+            self._command()
+        self._garantir_aba_mapeada(name)
+        self._tab_dict[name].tkraise()
 
 
 class CalendarioMensal(ctk.CTkFrame):

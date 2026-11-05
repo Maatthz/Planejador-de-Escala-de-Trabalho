@@ -43,6 +43,7 @@ class TelaEquipe(ctk.CTkFrame):
         super().__init__(master=master, fg_color=COR_FUNDO, **kwargs)
         self.dados = dados
         self.ao_mudar = ao_mudar
+        self._linhas_equipe: list[tuple[CartaoFrame, ctk.CTkLabel, ctk.CTkLabel, BotaoGrande, BotaoGrande]] = []
 
         self._construir_estrutura()
         self.atualizar_tela()
@@ -81,10 +82,7 @@ class TelaEquipe(ctk.CTkFrame):
         configurar_rolagem_suave(self.scroll_lista)
 
     def atualizar_tela(self) -> None:
-        """Reconstrói os elementos visuais a partir de self.dados (fluxo unidirecional)."""
-        for filho in self.scroll_lista.winfo_children():
-            filho.destroy()
-
+        """Reconstrói ou atualiza in-place os elementos visuais a partir de self.dados."""
         ativas = [p for p in self.dados.pessoas if p.ativo]
         experientes = [p for p in ativas if p.experiente]
         self.lbl_contador.configure(
@@ -92,6 +90,9 @@ class TelaEquipe(ctk.CTkFrame):
         )
 
         if not self.dados.pessoas:
+            for filho in self.scroll_lista.winfo_children():
+                filho.destroy()
+            self._linhas_equipe.clear()
             self._mostrar_estado_vazio()
             return
 
@@ -100,6 +101,16 @@ class TelaEquipe(ctk.CTkFrame):
             self.dados.pessoas,
             key=lambda p: (not p.ativo, p.nome.lower()),
         )
+
+        # Reutiliza os cartões existentes se a quantidade de pessoas não mudou
+        if len(self._linhas_equipe) == len(pessoas_ordenadas):
+            for idx, pessoa in enumerate(pessoas_ordenadas):
+                self._atualizar_cartao_pessoa(self._linhas_equipe[idx], pessoa)
+            return
+
+        for filho in self.scroll_lista.winfo_children():
+            filho.destroy()
+        self._linhas_equipe.clear()
 
         for idx, pessoa in enumerate(pessoas_ordenadas):
             self._criar_cartao_pessoa(pessoa, idx)
@@ -143,14 +154,13 @@ class TelaEquipe(ctk.CTkFrame):
         lbl_nome.pack(side="left", padx=(14, 0), pady=8)
 
         # 2. Estrela amarela para experientes ativos
-        if pessoa.ativo and pessoa.experiente:
-            lbl_estrela = ctk.CTkLabel(
-                cartao,
-                text="★",
-                font=("Segoe UI", 16, "bold"),
-                text_color=COR_ESTRELA,
-            )
-            lbl_estrela.pack(side="left", padx=(6, 0), pady=8)
+        lbl_estrela = ctk.CTkLabel(
+            cartao,
+            text="★" if (pessoa.ativo and pessoa.experiente) else "",
+            font=("Segoe UI", 16, "bold"),
+            text_color=COR_ESTRELA,
+        )
+        lbl_estrela.pack(side="left", padx=(6, 0), pady=8)
 
         # 3. Botão Desativar/Reativar (à direita)
         if pessoa.ativo:
@@ -183,6 +193,36 @@ class TelaEquipe(ctk.CTkFrame):
             width=68,
         )
         btn_editar.pack(side="right", padx=4, pady=8)
+        self._linhas_equipe.append((cartao, lbl_nome, lbl_estrela, btn_status, btn_editar))
+
+    def _atualizar_cartao_pessoa(
+        self,
+        item: tuple[CartaoFrame, ctk.CTkLabel, ctk.CTkLabel, BotaoGrande, BotaoGrande],
+        pessoa: Pessoa,
+    ) -> None:
+        """Atualiza in-place os dados de um cartão já existente na grade."""
+        _, lbl_nome, lbl_estrela, btn_status, btn_editar = item
+        if not pessoa.ativo:
+            texto_nome = f"{pessoa.nome}  (Inativo)"
+            cor_nome = COR_TEXTO_SUAVE
+            fonte_nome = ("Segoe UI", 14)
+            txt_status = "Reativar"
+            txt_estrela = ""
+        else:
+            texto_nome = pessoa.nome
+            cor_nome = COR_TEXTO
+            fonte_nome = ("Segoe UI", 14, "bold")
+            txt_status = "Desativar"
+            txt_estrela = "★" if pessoa.experiente else ""
+
+        if lbl_nome.cget("text") != texto_nome or lbl_nome.cget("text_color") != cor_nome:
+            lbl_nome.configure(text=texto_nome, text_color=cor_nome, font=fonte_nome)
+        if lbl_estrela.cget("text") != txt_estrela:
+            lbl_estrela.configure(text=txt_estrela)
+        if btn_status.cget("text") != txt_status:
+            btn_status.configure(text=txt_status)
+        btn_status.configure(command=lambda p=pessoa: self._alternar_status(p))
+        btn_editar.configure(command=lambda p=pessoa: self._abrir_dialogo_editar(p))
 
     def _alternar_status(self, pessoa: Pessoa) -> None:
         """Ativa ou desativa a pessoa. Ao reativar, ajusta data_entrada para hoje."""

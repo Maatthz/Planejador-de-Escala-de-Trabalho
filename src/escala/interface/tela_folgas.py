@@ -44,16 +44,20 @@ class TelaFolgas(ctk.CTkFrame):
         master,
         dados: DadosDoPrograma,
         ao_mudar: Callable[[], None],
+        inicializar_agora: bool = True,
         **kwargs,
     ) -> None:
         super().__init__(master=master, fg_color=COR_FUNDO, **kwargs)
         self.dados = dados
         self.ao_mudar = ao_mudar
         self.pessoa_selecionada: Pessoa | None = None
+        self._id_botao_selecionado: int | None = None
         self._botoes_pessoas: dict[int, ctk.CTkButton] = {}
+        self._datas_renderizadas: tuple[date, ...] | None = None
 
         self._construir_layout()
-        self.atualizar_tela()
+        if inicializar_agora:
+            self.atualizar_tela()
 
     def _construir_layout(self) -> None:
         """Divide a tela em duas colunas: lista de integrantes à esquerda e detalhes à direita."""
@@ -192,22 +196,23 @@ class TelaFolgas(ctk.CTkFrame):
         hoje = date.today()
         ids_ativas = [p.id for p in ativas]
 
-        # Se a lista de botões já corresponde aos mesmos IDs, apenas atualiza texto e cores
+        # Se a lista de botões já corresponde aos mesmos IDs, apenas atualiza quem mudou
         if list(self._botoes_pessoas.keys()) == ids_ativas:
+            id_sel = self.pessoa_selecionada.id if self.pessoa_selecionada is not None else None
             for pessoa in ativas:
                 btn = self._botoes_pessoas[pessoa.id]
-                selecionada = (
-                    self.pessoa_selecionada is not None
-                    and self.pessoa_selecionada.id == pessoa.id
-                )
+                selecionada = (pessoa.id == id_sel)
                 folgas_futuras = sum(1 for d in pessoa.indisponibilidades if d >= hoje)
                 txt = f"  {pessoa.nome}   •   {folgas_futuras} folga(s)" if folgas_futuras > 0 else f"  {pessoa.nome}"
-                btn.configure(
-                    text=txt,
-                    fg_color=COR_PRIMARIA if selecionada else COR_FUNDO,
-                    hover_color=COR_PRIMARIA_HOVER if selecionada else COR_BORDA,
-                    text_color="#FFFFFF" if selecionada else COR_TEXTO,
-                )
+                cor_fg = COR_PRIMARIA if selecionada else COR_FUNDO
+                if btn.cget("text") != txt or btn.cget("fg_color") != cor_fg:
+                    btn.configure(
+                        text=txt,
+                        fg_color=cor_fg,
+                        hover_color=COR_PRIMARIA_HOVER if selecionada else COR_BORDA,
+                        text_color="#FFFFFF" if selecionada else COR_TEXTO,
+                    )
+            self._id_botao_selecionado = id_sel
             return
 
         # Reconstrói a lista de botões se a equipe mudou
@@ -238,18 +243,31 @@ class TelaFolgas(ctk.CTkFrame):
             item_btn.pack(fill="x", pady=2, padx=4)
             self._botoes_pessoas[pessoa.id] = item_btn
 
+        self._id_botao_selecionado = (
+            self.pessoa_selecionada.id if self.pessoa_selecionada is not None else None
+        )
+
     def _selecionar_pessoa(self, pessoa: Pessoa) -> None:
-        """Seleciona uma pessoa atualizando apenas cores dos botões e o painel direito."""
+        """Seleciona uma pessoa atualizando apenas os 2 botões envolvidos e o painel direito."""
+        id_anterior = self._id_botao_selecionado
         self.pessoa_selecionada = pessoa
 
-        # Atualiza apenas as cores dos botões sem destruir a lista
-        for pid, btn in self._botoes_pessoas.items():
-            sel = (pid == pessoa.id)
-            btn.configure(
-                fg_color=COR_PRIMARIA if sel else COR_FUNDO,
-                hover_color=COR_PRIMARIA_HOVER if sel else COR_BORDA,
-                text_color="#FFFFFF" if sel else COR_TEXTO,
-            )
+        if not self._botoes_pessoas:
+            self._atualizar_lista_pessoas()
+        else:
+            if id_anterior is not None and id_anterior != pessoa.id and id_anterior in self._botoes_pessoas:
+                self._botoes_pessoas[id_anterior].configure(
+                    fg_color=COR_FUNDO,
+                    hover_color=COR_BORDA,
+                    text_color=COR_TEXTO,
+                )
+            if pessoa.id in self._botoes_pessoas and id_anterior != pessoa.id:
+                self._botoes_pessoas[pessoa.id].configure(
+                    fg_color=COR_PRIMARIA,
+                    hover_color=COR_PRIMARIA_HOVER,
+                    text_color="#FFFFFF",
+                )
+            self._id_botao_selecionado = pessoa.id
 
         self._atualizar_painel_direito()
 
@@ -269,10 +287,19 @@ class TelaFolgas(ctk.CTkFrame):
 
     def _construir_lista_datas_registradas(self) -> None:
         """Exibe os dias marcados organizados em ordem cronológica com botão de remoção."""
+        datas_ordenadas = (
+            tuple(sorted(self.pessoa_selecionada.indisponibilidades))
+            if self.pessoa_selecionada
+            else ()
+        )
+        if self._datas_renderizadas == datas_ordenadas:
+            return
+        self._datas_renderizadas = datas_ordenadas
+
         for filho in self.container_linhas_datas.winfo_children():
             filho.destroy()
 
-        if not self.pessoa_selecionada or not self.pessoa_selecionada.indisponibilidades:
+        if not datas_ordenadas:
             lbl_nenhuma = ctk.CTkLabel(
                 self.container_linhas_datas,
                 text="Nenhuma folga cadastrada no momento.",
@@ -282,8 +309,6 @@ class TelaFolgas(ctk.CTkFrame):
             )
             lbl_nenhuma.pack(fill="x", pady=4)
             return
-
-        datas_ordenadas = sorted(self.pessoa_selecionada.indisponibilidades)
         for d in datas_ordenadas:
             linha = ctk.CTkFrame(self.container_linhas_datas, fg_color="transparent")
             linha.pack(fill="x", pady=2)

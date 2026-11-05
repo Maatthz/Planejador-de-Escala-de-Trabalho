@@ -273,3 +273,18 @@ em uma pessoa na aba Folgas), o `AGENTS.md` recebeu as seções **10.4 (Regras d
 
 
 
+
+## 04/11/2026 — Ajuste fino de Performance (Memoização de Estado Visual e Lazy Init real)
+
+**O que mudou:** corrigidos os 3 detalhes finos apontados no code review da Fase 7.1 em `componentes.py`,
+`janela_principal.py`, `tela_equipe.py`, `tela_folgas.py` e `tela_escala.py`.
+
+**Decisões:**
+- **`inicializar_agora=False`** nas abas `Folgas` e `Escala` ao abrir a `JanelaPrincipal`: evita construir as 3 abas no arranque e depois destruir/reconstruir no primeiro clique.
+- **Cache de estado visual (*memoização*)** nos 42 botões do `CalendarioMensal` (`_estado_botoes`), nos cartões de `TelaEquipe` (`_linhas_equipe`) e na lista de datas de `TelaFolgas` (`_datas_renderizadas`): `.configure()` só é chamado nos widgets cujo valor realmente mudou.
+- Em `TelaFolgas._selecionar_pessoa`, apenas os 2 botões afetados (o anterior e o novo selecionado) são reconfigurados, em vez de percorrer e redesenhar os 28 botões.
+- Passo de rolagem ajustado para `yscrollincrement=24`.
+
+**Conceitos aprendidos:**
+- **Memoização / Dirty Checking na UI:** guardar o último estado desenhado de um componente e só chamar a função de redesenho (`.configure()`) quando o estado novo for diferente do anterior.
+- **Custo oculto de `.configure()` no CustomTkinter:** mesmo sem `destroy()`, chamar `.configure(fg_color=...)` sem necessidade força o `tk.Canvas` interno a redesenhar formas vetoriais.

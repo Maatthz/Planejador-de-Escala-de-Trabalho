@@ -69,6 +69,7 @@ class TelaEscala(ctk.CTkFrame):
         master,
         dados: DadosDoPrograma,
         ao_mudar: Callable[[], None],
+        inicializar_agora: bool = True,
         **kwargs,
     ) -> None:
         super().__init__(master=master, fg_color=COR_FUNDO, **kwargs)
@@ -82,7 +83,8 @@ class TelaEscala(ctk.CTkFrame):
         self.escala_ativa: Escala | None = self.dados.rascunho
 
         self._construir_interface()
-        self.atualizar_tela()
+        if inicializar_agora:
+            self.atualizar_tela()
 
     def _construir_interface(self) -> None:
         """Monta a barra superior de controles, área rolável e rodapé com botões de ação."""

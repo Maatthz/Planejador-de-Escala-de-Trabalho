@@ -133,19 +133,21 @@ class JanelaPrincipal(ctk.CTk):
         )
         self.tela_equipe.pack(fill="both", expand=True)
 
-        # Aba Folgas (implementada na Fase 5)
+        # Aba Folgas (implementada na Fase 5 — carrega cartões sob demanda)
         self.tela_folgas = TelaFolgas(
             master=self.tab_folgas,
             dados=self.dados,
             ao_mudar=self.ao_mudar,
+            inicializar_agora=False,
         )
         self.tela_folgas.pack(fill="both", expand=True)
 
-        # Aba Escala (implementada na Fase 6)
+        # Aba Escala (implementada na Fase 6 — carrega cartões sob demanda)
         self.tela_escala = TelaEscala(
             master=self.tab_escala,
             dados=self.dados,
             ao_mudar=self.ao_mudar,
+            inicializar_agora=False,
         )
         self.tela_escala.pack(fill="both", expand=True)
 

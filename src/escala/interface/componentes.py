@@ -37,6 +37,9 @@ COR_AVISO_TEXTO: str = "#FDE68A"
 COR_SUCESSO_FUNDO: str = "#064E3B"
 COR_SUCESSO_TEXTO: str = "#A7F3D0"
 
+COR_ESTRELA: str = "#FACC15"
+COR_ESTRELA_HOVER: str = "#EAB308"
+
 COR_TEXTO: str = "#F4F4F5"
 COR_TEXTO_SUAVE: str = "#A1A1AA"
 
@@ -308,7 +311,7 @@ def configurar_rolagem_suave(scroll: ctk.CTkScrollableFrame) -> None:
     """Otimiza a taxa de rolagem do CTkScrollableFrame para evitar micro-redesenhos lentos."""
     try:
         if hasattr(scroll, "_parent_canvas"):
-            scroll._parent_canvas.configure(yscrollincrement=8)
+            scroll._parent_canvas.configure(yscrollincrement=24)
     except Exception:
         pass
 
@@ -340,6 +343,7 @@ class CalendarioMensal(ctk.CTkFrame):
 
         # Lista de 42 botões reutilizados in-place (sem destroy() ao navegar)
         self._botoes_dias: list[ctk.CTkButton] = []
+        self._estado_botoes: list[tuple | None] = [None] * 42
 
         self._construir_estrutura()
         self._construir_grade_botoes()
@@ -461,6 +465,10 @@ class CalendarioMensal(ctk.CTkFrame):
         for idx, num_dia in enumerate(slots[:42]):
             btn = self._botoes_dias[idx]
             if num_dia == 0:
+                novo_estado = (0, False, False)
+                if self._estado_botoes[idx] == novo_estado:
+                    continue
+                self._estado_botoes[idx] = novo_estado
                 btn.configure(
                     text="",
                     fg_color="transparent",
@@ -473,6 +481,10 @@ class CalendarioMensal(ctk.CTkFrame):
                 data_dia = date(self.ano_atual, self.mes_atual, num_dia)
                 marcado = data_dia in self.datas_marcadas
                 eh_hoje = (data_dia == hoje)
+                novo_estado = (data_dia, marcado, eh_hoje)
+                if self._estado_botoes[idx] == novo_estado:
+                    continue
+                self._estado_botoes[idx] = novo_estado
 
                 if marcado:
                     fg = COR_PERIGO

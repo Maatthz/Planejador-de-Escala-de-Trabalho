@@ -257,5 +257,19 @@ em uma pessoa na aba Folgas), o `AGENTS.md` recebeu as seções **10.4 (Regras d
 - **Saturação vs. Neutralidade Cromática:** paletas com saturação azulada (*slate/navy*) geram sensação de frieza, enquanto tons neutros de cinza grafite (*zinc/charcoal*) proporcionam uma estética minimalista e moderna similar a ferramentas de desenvolvimento (VS Code, terminal, interfaces profissionais).
 - **Consistência de Tokens de Interface:** ao centralizar cores em variáveis semânticas (`COR_FUNDO`, `COR_CARTAO`, `COR_BORDA`), a alteração de tema para toda a aplicação ocorre em um único ponto, sem tocar na lógica nem quebrar componentes.
 
+## 04/11/2026 — Destaque em Amarelo Ouro para Integrantes Experientes (★)
+
+**O que mudou:** a pedido do desenvolvedor, a estrela indicadora de integrantes experientes passou a ser exibida em amarelo ouro vibrante (`COR_ESTRELA = "#FACC15"`), com destaque visual na aba Equipe (`tela_equipe.py`), na aba Escala (`tela_escala.py`), no diálogo do Quadro de Justiça (`janela_justica.py`) e na caixa de seleção dos modais de cadastro e edição.
+
+**Decisões:**
+- Destaque cromático independente: no Tkinter, textos dentro de um mesmo rótulo compartilham uma única cor; para que a estrela fosse amarela sem forçar o nome da pessoa a ficar amarelo, ela passou a ser renderizada com `text_color=COR_ESTRELA`, respeitando o teto de 4 widgets internos por cartão na equipe.
+- Checkbox temático nos formulários: a opção "Pessoa experiente no plantão (★)" passa a preencher o fundo da caixa em amarelo ouro ao ser ativada, oferecendo feedback visual claro e imediato.
+- Clique integrado nas duplas: na grade de escala, clicar na estrela dourada também aciona o diálogo de substituição do membro da dupla.
+
+**Conceitos aprendidos:**
+- **Afetância Visual e Acentuação de Estado (Visual Affordance):** uso de uma cor quente (amarelo ouro) para um atributo especial (experiência), criando contraste instantâneo sobre superfícies grafite.
+- **Composição de Widgets vs. Monocromia:** técnica de divisão de elementos visuais para viabilizar estilizações policromáticas em bibliotecas de interface desktop com controles de texto monocromáticos.
+
+
 
 

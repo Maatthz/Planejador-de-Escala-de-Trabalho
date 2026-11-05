@@ -28,6 +28,7 @@ from src.escala.interface.componentes import (
     COR_AVISO_TEXTO,
     COR_BORDA,
     COR_CARTAO,
+    COR_ESTRELA,
     COR_FUNDO,
     COR_PERIGO,
     COR_PRIMARIA,
@@ -393,10 +394,9 @@ class TelaEscala(ctk.CTkFrame):
             lbl_num.pack(side="left", padx=(8, 4), pady=6)
 
             # 2. Botão da Pessoa A (clique abre troca)
-            txt_a = f"{nome_a} ⭐" if (p_a and p_a.experiente) else nome_a
             btn_a = ctk.CTkButton(
                 card_dupla,
-                text=txt_a,
+                text=nome_a,
                 fg_color=COR_CARTAO,
                 hover_color=COR_SECUNDARIA_HOVER,
                 text_color=COR_TEXTO,
@@ -405,7 +405,17 @@ class TelaEscala(ctk.CTkFrame):
                 anchor="w",
                 command=lambda ip=idx_plantao, sa=dupla.pessoa_a: self._abrir_dialogo_troca(ip, sa),
             )
-            btn_a.pack(side="left", fill="x", expand=True, padx=2, pady=4)
+            btn_a.pack(side="left", fill="x", expand=True, padx=(2, 2), pady=4)
+
+            if p_a and p_a.experiente:
+                lbl_est_a = ctk.CTkLabel(
+                    card_dupla,
+                    text="★",
+                    font=("Segoe UI", 15, "bold"),
+                    text_color=COR_ESTRELA,
+                )
+                lbl_est_a.pack(side="left", padx=(0, 4), pady=4)
+                lbl_est_a.bind("<Button-1>", lambda _, ip=idx_plantao, sa=dupla.pessoa_a: self._abrir_dialogo_troca(ip, sa))
 
             # 3. Separador "&"
             lbl_sep = ctk.CTkLabel(
@@ -417,10 +427,9 @@ class TelaEscala(ctk.CTkFrame):
             lbl_sep.pack(side="left", padx=4, pady=6)
 
             # 4. Botão da Pessoa B (clique abre troca)
-            txt_b = f"{nome_b} ⭐" if (p_b and p_b.experiente) else nome_b
             btn_b = ctk.CTkButton(
                 card_dupla,
-                text=txt_b,
+                text=nome_b,
                 fg_color=COR_CARTAO,
                 hover_color=COR_SECUNDARIA_HOVER,
                 text_color=COR_TEXTO,
@@ -429,7 +438,17 @@ class TelaEscala(ctk.CTkFrame):
                 anchor="w",
                 command=lambda ip=idx_plantao, sb=dupla.pessoa_b: self._abrir_dialogo_troca(ip, sb),
             )
-            btn_b.pack(side="left", fill="x", expand=True, padx=(2, 8), pady=4)
+            btn_b.pack(side="left", fill="x", expand=True, padx=(2, 2), pady=4)
+
+            if p_b and p_b.experiente:
+                lbl_est_b = ctk.CTkLabel(
+                    card_dupla,
+                    text="★",
+                    font=("Segoe UI", 15, "bold"),
+                    text_color=COR_ESTRELA,
+                )
+                lbl_est_b.pack(side="left", padx=(0, 6), pady=4)
+                lbl_est_b.bind("<Button-1>", lambda _, ip=idx_plantao, sb=dupla.pessoa_b: self._abrir_dialogo_troca(ip, sb))
 
     def _abrir_dialogo_troca(self, indice_plantao: int, id_sai: int) -> None:
         """Abre modal com lista de opções para substituir uma pessoa no plantão."""

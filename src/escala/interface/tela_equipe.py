@@ -12,6 +12,8 @@ from src.escala.interface.componentes import (
     COR_AVISO_FUNDO,
     COR_AVISO_TEXTO,
     COR_CARTAO,
+    COR_ESTRELA,
+    COR_ESTRELA_HOVER,
     COR_FUNDO,
     COR_TEXTO,
     COR_TEXTO_SUAVE,
@@ -121,27 +123,36 @@ class TelaEquipe(ctk.CTkFrame):
         cartao = CartaoFrame(self.scroll_lista)
         cartao.grid(row=idx // 2, column=idx % 2, sticky="ew", padx=6, pady=4)
 
-        # 1. Nome com status integrado no texto
+        # 1. Nome com status integrado no texto se inativo
         if not pessoa.ativo:
             texto_nome = f"{pessoa.nome}  (Inativo)"
             cor_nome = COR_TEXTO_SUAVE
-        elif pessoa.experiente:
-            texto_nome = f"{pessoa.nome}  ⭐"
-            cor_nome = COR_TEXTO
+            fonte_nome = ("Segoe UI", 14)
         else:
             texto_nome = pessoa.nome
             cor_nome = COR_TEXTO
+            fonte_nome = ("Segoe UI", 14, "bold")
 
         lbl_nome = ctk.CTkLabel(
             cartao,
             text=texto_nome,
-            font=("Segoe UI", 14, "bold") if pessoa.ativo else ("Segoe UI", 14),
+            font=fonte_nome,
             text_color=cor_nome,
             anchor="w",
         )
         lbl_nome.pack(side="left", padx=(14, 0), pady=8)
 
-        # 2. Botão Desativar/Reativar (à direita)
+        # 2. Estrela amarela para experientes ativos
+        if pessoa.ativo and pessoa.experiente:
+            lbl_estrela = ctk.CTkLabel(
+                cartao,
+                text="★",
+                font=("Segoe UI", 16, "bold"),
+                text_color=COR_ESTRELA,
+            )
+            lbl_estrela.pack(side="left", padx=(6, 0), pady=8)
+
+        # 3. Botão Desativar/Reativar (à direita)
         if pessoa.ativo:
             btn_status = BotaoGrande(
                 cartao,
@@ -162,7 +173,7 @@ class TelaEquipe(ctk.CTkFrame):
             )
         btn_status.pack(side="right", padx=(4, 12), pady=8)
 
-        # 3. Botão Editar
+        # 4. Botão Editar
         btn_editar = BotaoGrande(
             cartao,
             "Editar",
@@ -208,9 +219,12 @@ class TelaEquipe(ctk.CTkFrame):
         var_experiente = ctk.BooleanVar(value=False)
         check_exp = ctk.CTkCheckBox(
             janela,
-            text="Pessoa experiente no plantão",
+            text="Pessoa experiente no plantão (★)",
             variable=var_experiente,
             font=FONTE_CORPO,
+            fg_color=COR_ESTRELA,
+            hover_color=COR_ESTRELA_HOVER,
+            checkmark_color="#121214",
         )
         check_exp.pack(anchor="w", padx=24, pady=(0, 20))
 
@@ -266,9 +280,12 @@ class TelaEquipe(ctk.CTkFrame):
         var_experiente = ctk.BooleanVar(value=pessoa.experiente)
         check_exp = ctk.CTkCheckBox(
             janela,
-            text="Pessoa experiente no plantão",
+            text="Pessoa experiente no plantão (★)",
             variable=var_experiente,
             font=FONTE_CORPO,
+            fg_color=COR_ESTRELA,
+            hover_color=COR_ESTRELA_HOVER,
+            checkmark_color="#121214",
         )
         check_exp.pack(anchor="w", padx=24, pady=(0, 20))
 

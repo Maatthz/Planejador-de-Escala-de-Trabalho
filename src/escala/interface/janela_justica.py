@@ -13,6 +13,7 @@ from src.escala.interface.componentes import (
     COR_AVISO_TEXTO,
     COR_BORDA,
     COR_CARTAO,
+    COR_ESTRELA,
     COR_FUNDO,
     COR_TEXTO,
     COR_TEXTO_SUAVE,
@@ -124,17 +125,28 @@ class JanelaJustica(ctk.CTkToplevel):
             )
             lbl_pos.pack(side="left", padx=4)
 
-            # 2. Nome (com estrela se experiente)
-            estrela = " ⭐" if item.pessoa.experiente else ""
+            # 2. Nome (com estrela amarela se experiente)
+            frame_nome = ctk.CTkFrame(linha, fg_color="transparent", width=180, height=30)
+            frame_nome.pack(side="left", padx=4)
+            frame_nome.pack_propagate(False)
+
             lbl_nome = ctk.CTkLabel(
-                linha,
-                text=f"{item.pessoa.nome}{estrela}",
+                frame_nome,
+                text=item.pessoa.nome,
                 font=FONTE_CORPO,
                 text_color=COR_TEXTO,
-                width=180,
                 anchor="w",
             )
-            lbl_nome.pack(side="left", padx=4)
+            lbl_nome.pack(side="left")
+
+            if item.pessoa.experiente:
+                lbl_est = ctk.CTkLabel(
+                    frame_nome,
+                    text="★",
+                    font=("Segoe UI", 15, "bold"),
+                    text_color=COR_ESTRELA,
+                )
+                lbl_est.pack(side="left", padx=4)
 
             # 3. Plantões reais
             lbl_plantoes = ctk.CTkLabel(

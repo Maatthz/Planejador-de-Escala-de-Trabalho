@@ -301,8 +301,17 @@ MESES_PT: list[str] = [
 DIAS_SEMANA_ABREV: list[str] = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
 
 
+def configurar_rolagem_suave(scroll: ctk.CTkScrollableFrame) -> None:
+    """Otimiza a taxa de rolagem do CTkScrollableFrame para evitar micro-redesenhos lentos."""
+    try:
+        if hasattr(scroll, "_parent_canvas"):
+            scroll._parent_canvas.configure(yscrollincrement=8)
+    except Exception:
+        pass
+
+
 class CalendarioMensal(ctk.CTkFrame):
-    """Componente de calendário em grade 7x6 para marcação de folgas e feriados."""
+    """Componente de calendário em grade 7x6 com botões reutilizados (in-place update)."""
 
     def __init__(
         self,
@@ -326,8 +335,12 @@ class CalendarioMensal(ctk.CTkFrame):
         self.ano_atual: int = hoje.year
         self.mes_atual: int = hoje.month
 
+        # Lista de 42 botões reutilizados in-place (sem destroy() ao navegar)
+        self._botoes_dias: list[ctk.CTkButton] = []
+
         self._construir_estrutura()
-        self._redesenhar_grade()
+        self._construir_grade_botoes()
+        self._atualizar_dias()
 
     def _construir_estrutura(self) -> None:
         """Cria o cabeçalho com botões de navegação e os títulos dos dias da semana."""
@@ -368,18 +381,21 @@ class CalendarioMensal(ctk.CTkFrame):
         )
         btn_prox.pack(side="right")
 
-        # Cabeçalho dos dias da semana (Seg a Dom)
-        dias_frame = ctk.CTkFrame(self, fg_color="transparent")
-        dias_frame.pack(fill="x", padx=12, pady=(0, 4))
+        # Cabeçalho dos dias da semana (Seg a Dom) com Sáb e Dom destacados
+        self.dias_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.dias_frame.pack(fill="x", padx=12, pady=(0, 4))
+        self._rotulos_cabecalho: list[ctk.CTkLabel] = []
         for col, dia_abrev in enumerate(DIAS_SEMANA_ABREV):
-            dias_frame.grid_columnconfigure(col, weight=1)
+            self.dias_frame.grid_columnconfigure(col, weight=1)
+            eh_fim_de_semana = dia_abrev in ("Sáb", "Dom")
             lbl_dia = ctk.CTkLabel(
-                dias_frame,
+                self.dias_frame,
                 text=dia_abrev,
-                font=FONTE_AJUDA,
-                text_color=COR_TEXTO_SUAVE,
+                font=("Segoe UI", 12, "bold") if eh_fim_de_semana else FONTE_AJUDA,
+                text_color=COR_PRIMARIA if eh_fim_de_semana else COR_TEXTO_SUAVE,
             )
             lbl_dia.grid(row=0, column=col, sticky="ew")
+            self._rotulos_cabecalho.append(lbl_dia)
 
         # Grade dos dias (7 colunas x 6 semanas)
         self.grade_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -387,61 +403,103 @@ class CalendarioMensal(ctk.CTkFrame):
         for col in range(7):
             self.grade_frame.grid_columnconfigure(col, weight=1)
 
+    def _construir_grade_botoes(self) -> None:
+        """Instancia os 42 botões uma única vez na inicialização para reuso in-place."""
+        for idx in range(42):
+            r = idx // 7
+            c = idx % 7
+            btn = ctk.CTkButton(
+                self.grade_frame,
+                text="",
+                font=FONTE_CORPO,
+                height=36,
+                width=36,
+                fg_color="transparent",
+                hover_color=COR_SECUNDARIA_HOVER,
+                text_color=COR_TEXTO,
+                corner_radius=8,
+            )
+            btn.grid(row=r, column=c, padx=2, pady=2, sticky="nsew")
+            self._botoes_dias.append(btn)
+
     def _mes_anterior(self) -> None:
-        """Avança para o mês anterior."""
+        """Avança para o mês anterior sem recriar os botões."""
         if self.mes_atual == 1:
             self.mes_atual = 12
             self.ano_atual -= 1
         else:
             self.mes_atual -= 1
-        self._redesenhar_grade()
+        self._atualizar_dias()
 
     def _mes_proximo(self) -> None:
-        """Avança para o próximo mês."""
+        """Avança para o próximo mês sem recriar os botões."""
         if self.mes_atual == 12:
             self.mes_atual = 1
             self.ano_atual += 1
         else:
             self.mes_atual += 1
-        self._redesenhar_grade()
+        self._atualizar_dias()
 
-    def _redesenhar_grade(self) -> None:
-        """Limpa e reconstrói os botões da grade do mês atual."""
+    def _atualizar_dias(self) -> None:
+        """Atualiza o texto, cores e estados dos 42 botões existentes (in-place)."""
         import calendar
-
-        for filho in self.grade_frame.winfo_children():
-            filho.destroy()
 
         nome_mes = MESES_PT[self.mes_atual]
         self.lbl_mes_ano.configure(text=f"{nome_mes} de {self.ano_atual}")
+        hoje = date.today()
 
         semanas = calendar.monthcalendar(self.ano_atual, self.mes_atual)
-        for lin, semana in enumerate(semanas):
-            for col, num_dia in enumerate(semana):
-                if num_dia == 0:
-                    lbl_vazio = ctk.CTkLabel(self.grade_frame, text="", height=36)
-                    lbl_vazio.grid(row=lin, column=col, padx=2, pady=2, sticky="nsew")
+        slots: list[int] = []
+        for sem in semanas:
+            slots.extend(sem)
+        while len(slots) < 42:
+            slots.append(0)
+
+        for idx, num_dia in enumerate(slots[:42]):
+            btn = self._botoes_dias[idx]
+            if num_dia == 0:
+                btn.configure(
+                    text="",
+                    fg_color="transparent",
+                    hover_color=COR_CARTAO,
+                    border_width=0,
+                    state="disabled",
+                    command=None,
+                )
+            else:
+                data_dia = date(self.ano_atual, self.mes_atual, num_dia)
+                marcado = data_dia in self.datas_marcadas
+                eh_hoje = (data_dia == hoje)
+
+                if marcado:
+                    fg = COR_PERIGO
+                    hover = COR_PERIGO_HOVER
+                    cor_txt = "#FFFFFF"
+                    borda_w = 0
+                    borda_c = COR_BORDA
+                elif eh_hoje:
+                    fg = "transparent"
+                    hover = COR_SECUNDARIA_HOVER
+                    cor_txt = COR_PRIMARIA
+                    borda_w = 2
+                    borda_c = COR_PRIMARIA
                 else:
-                    data_dia = date(self.ano_atual, self.mes_atual, num_dia)
-                    marcado = data_dia in self.datas_marcadas
+                    fg = "transparent"
+                    hover = COR_SECUNDARIA_HOVER
+                    cor_txt = COR_TEXTO
+                    borda_w = 0
+                    borda_c = COR_BORDA
 
-                    fg = COR_PERIGO if marcado else "transparent"
-                    hover = COR_PERIGO_HOVER if marcado else COR_SECUNDARIA_HOVER
-                    cor_texto = "#FFFFFF" if marcado else COR_TEXTO
-
-                    btn_dia = ctk.CTkButton(
-                        self.grade_frame,
-                        text=str(num_dia),
-                        font=FONTE_CORPO,
-                        height=36,
-                        width=36,
-                        fg_color=fg,
-                        hover_color=hover,
-                        text_color=cor_texto,
-                        corner_radius=8,
-                        command=lambda d=data_dia: self._ao_clicar_dia(d),
-                    )
-                    btn_dia.grid(row=lin, column=col, padx=2, pady=2, sticky="nsew")
+                btn.configure(
+                    text=str(num_dia),
+                    fg_color=fg,
+                    hover_color=hover,
+                    text_color=cor_txt,
+                    border_width=borda_w,
+                    border_color=borda_c,
+                    state="normal",
+                    command=lambda d=data_dia: self._ao_clicar_dia(d),
+                )
 
     def _ao_clicar_dia(self, dia: date) -> None:
         """Dispara o callback de clique no dia."""
@@ -449,6 +507,6 @@ class CalendarioMensal(ctk.CTkFrame):
             self.ao_clicar(dia)
 
     def atualizar_datas_marcadas(self, datas: set[date]) -> None:
-        """Atualiza a lista de datas marcadas e redesenha a grade."""
+        """Atualiza a lista de datas marcadas in-place sem recriar widgets."""
         self.datas_marcadas = datas
-        self._redesenhar_grade()
+        self._atualizar_dias()

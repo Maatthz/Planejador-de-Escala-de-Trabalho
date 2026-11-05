@@ -50,7 +50,7 @@ class JanelaPrincipal(ctk.CTk):
             self.dados, self.aviso_inicial = carregar()
 
         # Rastreia abas que precisam atualizar sua visualização (Lazy Rendering)
-        self._abas_desatualizadas: set[str] = set()
+        self._abas_desatualizadas: set[str] = {"folgas", "escala"}
 
         self._construir_interface()
 
@@ -59,7 +59,7 @@ class JanelaPrincipal(ctk.CTk):
             self.after(200, lambda: mostrar_info(self, self.aviso_inicial))
 
     def _construir_interface(self) -> None:
-        """Monta o cabeçalho, sistema de abas e rodapé."""
+        """Monta o cabeçalho, divisórias sutis, sistema de abas e rodapé."""
         # Cabeçalho
         cabecalho = ctk.CTkFrame(self, fg_color=COR_CARTAO, height=65, corner_radius=0)
         cabecalho.pack(fill="x", side="top")
@@ -82,6 +82,10 @@ class JanelaPrincipal(ctk.CTk):
         )
         btn_config.pack(side="right", padx=24)
 
+        # Divisória superior sutil
+        div_cabecalho = ctk.CTkFrame(self, height=1, fg_color=COR_BORDA, corner_radius=0)
+        div_cabecalho.pack(fill="x", side="top")
+
         # Rodapé
         rodape = ctk.CTkFrame(self, fg_color=COR_CARTAO, height=35, corner_radius=0)
         rodape.pack(fill="x", side="bottom")
@@ -94,6 +98,10 @@ class JanelaPrincipal(ctk.CTk):
             text_color=COR_TEXTO_SUAVE,
         )
         lbl_versao.pack(side="left", padx=24)
+
+        # Divisória inferior sutil
+        div_rodape = ctk.CTkFrame(self, height=1, fg_color=COR_BORDA, corner_radius=0)
+        div_rodape.pack(fill="x", side="bottom")
 
         # Sistema de Abas Navegáveis (com botões grandes e destacados)
         self.tabview = ctk.CTkTabview(

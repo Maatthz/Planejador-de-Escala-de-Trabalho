@@ -31,6 +31,7 @@ from src.escala.interface.componentes import (
     CampoComAjuda,
     CartaoFrame,
     configurar_janela_modal,
+    configurar_rolagem_suave,
     mostrar_erro,
     mostrar_info,
     perguntar_sim_nao,
@@ -127,6 +128,7 @@ class JanelaConfiguracoes(ctk.CTkToplevel):
         # 3. Área rolável com as seções
         self.scroll = ctk.CTkScrollableFrame(self, fg_color="transparent")
         self.scroll.pack(fill="both", expand=True, padx=20, pady=16)
+        configurar_rolagem_suave(self.scroll)
 
         self._construir_secao_turnos()
         self._construir_secao_feriados()

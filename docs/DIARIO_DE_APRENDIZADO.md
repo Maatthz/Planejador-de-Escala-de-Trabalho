@@ -227,3 +227,20 @@ em uma pessoa na aba Folgas), o `AGENTS.md` recebeu as seções **10.4 (Regras d
 - **Árvore de Widgets (*Widget Tree*) e custo de Canvas:** em CustomTkinter, cada borda ou canto arredondado é um `tk.Canvas` separado; aninhar muitos níveis degrada a rolagem.
 - **Atualização *in-place* vs. Destruir e Recriar (*Object Reuse*):** manter os objetos visuais vivos na memória e alterar apenas suas propriedades (`.configure()`) é dezenas de vezes mais rápido do que destruir (`destroy()`) e instanciar novos widgets a cada clique.
 - **Diagnóstico baseado em métricas (*Profiling*):** medir o tempo em milissegundos e contar objetos antes de otimizar.
+
+## 04/11/2026 — Fase 7.1: Refatoração de Performance e Polimento Visual (UI/UX)
+
+**O que mudou:** implementação completa da Fase 7.1 aplicando todas as regras de performance e diretrizes visuais estabelecidas nas seções 10.4, 10.5 e 10.6 do `AGENTS.md`. Todos os componentes reutilizam widgets *in-place* (sem `destroy()` em massa), áreas roláveis contam com rolagem suave configurada, cartões aninhados foram eliminados e a suíte agora conta com 92 testes automatizados 100% verdes, incluindo testes dedicados de performance em `test_interface_performance.py`.
+
+**Decisões:**
+- `CalendarioMensal` (*in-place update*): os 42 botões da grade mensal são instanciados uma única vez na inicialização; a navegação entre meses e a atualização de marcações apenas ajusta as propriedades (`text`, `fg_color`, `hover_color`, `border_width`, `state`, `command`) dos botões existentes, eliminando travamentos de alocação de memória no motor Tcl. Cabeçalhos de Sábado e Domingo foram destacados com `COR_PRIMARIA`, e o dia de hoje recebe borda azul.
+- `TelaFolgas` com painéis e botões persistentes: a lista lateral instancia botões únicos (`CTkButton` com `anchor="w"`) sem sobreposição de rótulos com `.place()`. Clicar em uma pessoa altera a cor apenas dos botões selecionado/deselecionado e atualiza o calendário e lista de datas sem recriar os elementos.
+- `TelaEscala` limpa e plana: substituição das caixas aninhadas de duplas (que continham até 13 widgets com bordas duplicadas) por linhas planas com `border_width=0` e apenas 4 elementos principais (número, botão da pessoa A, separador `&`, botão da pessoa B). Clicar no próprio nome da pessoa aciona o diálogo de substituição. A barra superior agora destaca em azul (`COR_PRIMARIA`) o botão do período ativo e exibe um rótulo claro com o intervalo de datas selecionado (`📅 02/11 a 08/11`).
+- Rolagem suave e acabamento visual: adição de `configurar_rolagem_suave` em todos os `CTkScrollableFrame` da aplicação (`tela_equipe`, `tela_folgas`, `tela_escala`, `janela_justica`, `janela_historico`, `janela_configuracoes`), linhas divisórias sutis abaixo do cabeçalho e acima do rodapé, e listras zebradas (*zebra striping*) na tabela do Quadro de Justiça.
+
+**Conceitos aprendidos:**
+- **Árvore de widgets (Widget Tree):** a estrutura hierárquica em árvore mantida pela interface gráfica, onde cada contêiner pai gerencia o posicionamento, redimensionamento e eventos de seus nós filhos. Quanto mais profunda e ramificada a árvore, mais cálculos de geometria são exigidos a cada ciclo de renderização.
+- **Reuso de objetos (*In-place Update*):** padrão de projeto que preserva instâncias de componentes gráficos já alocadas na memória, alterando somente seus atributos visuais em vez de destruí-las e recriá-las a cada interação do usuário.
+- **Layout Thrashing:** degradação drástica de fluidez que ocorre quando o programa força sucessivas destruições e recriações de elementos geométricos, obrigando o motor gráfico a recalcular dimensões e redesenhar formas vetoriais repetidamente em um curto intervalo de tempo.
+- **Hierarquia visual:** organização estratégica de cores, contrastes e pesos tipográficos para conduzir naturalmente a atenção do usuário aos dados e ações mais relevantes da tela sem esforço cognitivo.
+

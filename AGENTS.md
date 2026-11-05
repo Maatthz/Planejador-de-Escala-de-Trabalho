@@ -875,7 +875,7 @@ pyinstaller --onefile --windowed --name PlanejadorEscala --collect-data customtk
 | 5 ✅ | Aba Folgas + `CalendarioMensal` | Concluída | layout em grade, responsividade, estados vazios |
 | 6 ✅ | Aba Escala + feriado + quadro de justiça + histórico + copiar | Concluída | integração lógica ↔ interface, janelas modais, área de transferência |
 | 7 ✅ | ⚙️ Configurações com ajuda | Concluída | parametrização, validação de entrada |
-| 7.1 | Refatoração de Performance e Polimento Visual (UI/UX) | Regras das seções 10.4 e 10.6 aplicadas; `CalendarioMensal` e `TelaFolgas` reutilizando widgets sem `destroy()`; duplas sem bordas aninhadas; todos os testes + testes de performance verdes | Árvore de widgets (Widget Tree), reuso de objetos (*in-place update*), *layout thrashing*, hierarquia visual |
+| 7.1 ✅ | Refatoração de Performance e Polimento Visual (UI/UX) | Concluída | Árvore de widgets (Widget Tree), reuso de objetos (*in-place update*), *layout thrashing*, hierarquia visual |
 | 8 | `iniciar.py` + `.exe` manual | `.exe` abre num PC sem Python | empacotamento |
 | 9 | `atualizador.py` + testes | Testes com monkeypatch verdes; atualização real testada com 2 versões | HTTP, API REST, threads, hash, versionamento semântico |
 | 10 | GitHub Actions | Tag gera Release com `.exe` e `.sha256` | CI/CD |
@@ -936,6 +936,6 @@ pyinstaller --onefile --windowed --name PlanejadorEscala --collect-data customtk
 
 | Item | Situação |
 |---|---|
-| Fase atual | **Fase 7 concluída** → próxima: **Fase 7.1 (Refatoração de Performance e Polimento Visual UI/UX — ver seções 10.4 e 10.6)** |
+| Fase atual | **Fase 7.1 concluída** → próxima: **Fase 8 (`iniciar.py` + `.exe` manual)** |
 | Repositório GitHub | Ainda não criado (`REPOSITORIO_GITHUB` vazio) |
-| Último commit relevante | Auditoria do Tech Lead: especificação da Fase 7.1 (Performance e UI/UX) no AGENTS.md |
+| Último commit relevante | Fase 7.1: refatoracao de performance e polimento visual UI/UX com testes |

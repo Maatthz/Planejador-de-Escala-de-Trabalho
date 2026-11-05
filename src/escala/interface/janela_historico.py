@@ -23,6 +23,7 @@ from src.escala.interface.componentes import (
     BotaoGrande,
     CartaoFrame,
     configurar_janela_modal,
+    configurar_rolagem_suave,
     perguntar_sim_nao,
 )
 from src.escala.modelos import DadosDoPrograma, Escala
@@ -71,6 +72,7 @@ class JanelaHistorico(ctk.CTkToplevel):
 
         self.scroll_escalas = ctk.CTkScrollableFrame(self, fg_color="transparent")
         self.scroll_escalas.pack(fill="both", expand=True, padx=20, pady=(0, 16))
+        configurar_rolagem_suave(self.scroll_escalas)
 
         self._atualizar_lista()
 

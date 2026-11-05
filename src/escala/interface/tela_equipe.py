@@ -21,6 +21,7 @@ from src.escala.interface.componentes import (
     BotaoGrande,
     CartaoFrame,
     configurar_janela_modal,
+    configurar_rolagem_suave,
     mostrar_erro,
     perguntar_sim_nao,
 )
@@ -73,6 +74,9 @@ class TelaEquipe(ctk.CTkFrame):
             corner_radius=0,
         )
         self.scroll_lista.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        self.scroll_lista.grid_columnconfigure(0, weight=1, uniform="col_equipe")
+        self.scroll_lista.grid_columnconfigure(1, weight=1, uniform="col_equipe")
+        configurar_rolagem_suave(self.scroll_lista)
 
     def atualizar_tela(self) -> None:
         """Reconstrói os elementos visuais a partir de self.dados (fluxo unidirecional)."""
@@ -95,13 +99,13 @@ class TelaEquipe(ctk.CTkFrame):
             key=lambda p: (not p.ativo, p.nome.lower()),
         )
 
-        for pessoa in pessoas_ordenadas:
-            self._criar_cartao_pessoa(pessoa)
+        for idx, pessoa in enumerate(pessoas_ordenadas):
+            self._criar_cartao_pessoa(pessoa, idx)
 
     def _mostrar_estado_vazio(self) -> None:
-        """Exibe orientação amigável quando não há ninguém cadastrado."""
+        """Exibe orientação amigável quando não há ninguém cadastrado (1 único filho)."""
         cartao_vazio = CartaoFrame(self.scroll_lista)
-        cartao_vazio.pack(fill="x", pady=20, padx=10, ipady=30)
+        cartao_vazio.grid(row=0, column=0, columnspan=2, sticky="ew", pady=20, padx=10, ipady=30)
 
         lbl = ctk.CTkLabel(
             cartao_vazio,
@@ -112,46 +116,32 @@ class TelaEquipe(ctk.CTkFrame):
         )
         lbl.pack(expand=True)
 
-    def _criar_cartao_pessoa(self, pessoa: Pessoa) -> None:
-        """Cria uma linha/cartão compacta com as informações e ações da pessoa."""
+    def _criar_cartao_pessoa(self, pessoa: Pessoa, idx: int = 0) -> None:
+        """Cria uma linha/cartão em grade de 2 colunas com no máximo 4 widgets internos."""
         cartao = CartaoFrame(self.scroll_lista)
-        cartao.pack(fill="x", pady=2, padx=4)
+        cartao.grid(row=idx // 2, column=idx % 2, sticky="ew", padx=6, pady=4)
 
-        # Nome com destaque proporcional (alinhado diretamente à esquerda)
-        cor_nome = COR_TEXTO if pessoa.ativo else COR_TEXTO_SUAVE
+        # 1. Nome com status integrado no texto
+        if not pessoa.ativo:
+            texto_nome = f"{pessoa.nome}  (Inativo)"
+            cor_nome = COR_TEXTO_SUAVE
+        elif pessoa.experiente:
+            texto_nome = f"{pessoa.nome}  ⭐"
+            cor_nome = COR_TEXTO
+        else:
+            texto_nome = pessoa.nome
+            cor_nome = COR_TEXTO
+
         lbl_nome = ctk.CTkLabel(
             cartao,
-            text=pessoa.nome,
+            text=texto_nome,
             font=("Segoe UI", 14, "bold") if pessoa.ativo else ("Segoe UI", 14),
             text_color=cor_nome,
             anchor="w",
         )
-        lbl_nome.pack(side="left", padx=(14, 0), pady=6)
+        lbl_nome.pack(side="left", padx=(14, 0), pady=8)
 
-        # Selos de status proporcionais
-        if pessoa.experiente and pessoa.ativo:
-            lbl_exp = ctk.CTkLabel(
-                cartao,
-                text="⭐ Experiente",
-                font=("Segoe UI", 11, "bold"),
-                text_color=COR_AVISO_TEXTO,
-                fg_color=COR_AVISO_FUNDO,
-                corner_radius=6,
-                padx=8,
-                pady=1,
-            )
-            lbl_exp.pack(side="left", padx=10, pady=6)
-
-        if not pessoa.ativo:
-            lbl_inativo = ctk.CTkLabel(
-                cartao,
-                text="(Inativo)",
-                font=("Segoe UI", 12),
-                text_color=COR_TEXTO_SUAVE,
-            )
-            lbl_inativo.pack(side="left", padx=10, pady=6)
-
-        # Botões de ação (alinhados diretamente à direita, sem frames intermediários)
+        # 2. Botão Desativar/Reativar (à direita)
         if pessoa.ativo:
             btn_status = BotaoGrande(
                 cartao,
@@ -159,6 +149,7 @@ class TelaEquipe(ctk.CTkFrame):
                 comando=lambda p=pessoa: self._alternar_status(p),
                 variante="secundaria",
                 height=30,
+                width=84,
             )
         else:
             btn_status = BotaoGrande(
@@ -167,17 +158,20 @@ class TelaEquipe(ctk.CTkFrame):
                 comando=lambda p=pessoa: self._alternar_status(p),
                 variante="secundaria",
                 height=30,
+                width=84,
             )
-        btn_status.pack(side="right", padx=(4, 14), pady=6)
+        btn_status.pack(side="right", padx=(4, 12), pady=8)
 
+        # 3. Botão Editar
         btn_editar = BotaoGrande(
             cartao,
             "Editar",
             comando=lambda p=pessoa: self._abrir_dialogo_editar(p),
             variante="secundaria",
             height=30,
+            width=68,
         )
-        btn_editar.pack(side="right", padx=4, pady=6)
+        btn_editar.pack(side="right", padx=4, pady=8)
 
     def _alternar_status(self, pessoa: Pessoa) -> None:
         """Ativa ou desativa a pessoa. Ao reativar, ajusta data_entrada para hoje."""

@@ -47,6 +47,7 @@ from src.escala.interface.componentes import (
     BotaoGrande,
     CartaoFrame,
     configurar_janela_modal,
+    configurar_rolagem_suave,
     mostrar_erro,
     mostrar_info,
     perguntar_sim_nao,
@@ -73,6 +74,7 @@ class TelaEscala(ctk.CTkFrame):
 
         # Data de início padrão: segunda-feira desta semana
         self.data_inicio: date = inicio_da_semana(date.today())
+        self._modo_periodo: str = "esta"
         # Escala ativa sendo exibida (pode ser o rascunho ou uma do histórico)
         self.escala_ativa: Escala | None = self.dados.rascunho
 
@@ -90,9 +92,11 @@ class TelaEscala(ctk.CTkFrame):
         # Área central rolável para os cartões de plantão
         self.scroll_plantoes = ctk.CTkScrollableFrame(self, fg_color="transparent")
         self.scroll_plantoes.pack(fill="both", expand=True, padx=20, pady=(0, 10))
+        configurar_rolagem_suave(self.scroll_plantoes)
 
         # Rodapé com ações
         self._construir_rodape()
+        self._atualizar_destaque_botoes_periodo("esta")
 
     def _construir_barra_controle(self) -> None:
         """Barra com botões de período, seletor de semanas, feriados e botão Gerar."""
@@ -131,7 +135,16 @@ class TelaEscala(ctk.CTkFrame):
             variante="secundaria",
             height=36,
         )
-        self.btn_outra_data.pack(side="left", padx=(0, 14))
+        self.btn_outra_data.pack(side="left", padx=(0, 10))
+
+        # Rótulo de intervalo de datas visível e claro
+        self.lbl_periodo_datas = ctk.CTkLabel(
+            linha,
+            text="",
+            font=("Segoe UI", 14, "bold"),
+            text_color=COR_PRIMARIA,
+        )
+        self.lbl_periodo_datas.pack(side="left", padx=(0, 14))
 
         # Quantidade de semanas
         lbl_sem = ctk.CTkLabel(linha, text="Semanas:", font=FONTE_CORPO, text_color=COR_TEXTO)
@@ -143,6 +156,7 @@ class TelaEscala(ctk.CTkFrame):
             width=65,
             height=36,
             font=FONTE_CORPO,
+            command=lambda _: self._atualizar_rotulo_periodo(),
         )
         self.combo_semanas.set(str(self.dados.configuracao.semanas_por_geracao))
         self.combo_semanas.pack(side="left", padx=(0, 14))
@@ -304,13 +318,14 @@ class TelaEscala(ctk.CTkFrame):
         lbl.pack(expand=True)
 
     def _criar_cartao_plantao(self, plantao: Plantao, idx_plantao: int) -> None:
-        """Cria o cartão do turno com grade organizada de duplas e botões de troca alinhados."""
+        """Cria o cartão do turno com cabeçalho destacado e grade de duplas planas."""
         cartao = CartaoFrame(self.scroll_plantoes)
         cartao.pack(fill="x", pady=6)
 
-        # Cabeçalho do plantão com título e contador de pessoas
-        topo = ctk.CTkFrame(cartao, fg_color="transparent")
-        topo.pack(fill="x", padx=16, pady=(12, 6))
+        # Cabeçalho do plantão com fundo suave
+        cor_topo = "#FEF3C7" if plantao.eh_feriado else "#F1F5F9"
+        topo = ctk.CTkFrame(cartao, fg_color=cor_topo, corner_radius=8)
+        topo.pack(fill="x", padx=12, pady=(12, 8))
 
         dia_txt = formatar_dia_completo(plantao.data)
         per_txt = plantao.periodo.capitalize()
@@ -323,18 +338,19 @@ class TelaEscala(ctk.CTkFrame):
             text_color=COR_TEXTO,
             anchor="w",
         )
-        lbl_tit.pack(side="left")
+        lbl_tit.pack(side="left", padx=12, pady=8)
 
         qtd_duplas = len(plantao.duplas)
+        resumo_duplas = f"{qtd_duplas} duplas • Clique em um nome para trocar" if qtd_duplas != 1 else "1 dupla • Clique em um nome para trocar"
         lbl_resumo = ctk.CTkLabel(
             topo,
-            text=f"{qtd_duplas} dupla{'s' if qtd_duplas > 1 else ''} • {qtd_duplas * 2} pessoas",
+            text=resumo_duplas,
             font=("Segoe UI", 12),
             text_color=COR_TEXTO_SUAVE,
         )
-        lbl_resumo.pack(side="right")
+        lbl_resumo.pack(side="right", padx=12, pady=8)
 
-        # Grade em 2 colunas para exibição equilibrada das duplas
+        # Grade em 2 colunas para exibição equilibrada e plana das duplas
         frame_grid = ctk.CTkFrame(cartao, fg_color="transparent")
         frame_grid.pack(fill="x", padx=12, pady=(2, 10))
         frame_grid.grid_columnconfigure(0, weight=1, uniform="col_dupla")
@@ -349,8 +365,7 @@ class TelaEscala(ctk.CTkFrame):
             card_dupla = ctk.CTkFrame(
                 frame_grid,
                 fg_color=COR_FUNDO,
-                border_color=COR_BORDA,
-                border_width=1,
+                border_width=0,
                 corner_radius=8,
             )
 
@@ -365,101 +380,54 @@ class TelaEscala(ctk.CTkFrame):
                 else:
                     card_dupla.grid(row=linha_idx, column=col_idx, sticky="nsew", padx=4, pady=4)
 
-            # Cabeçalho da dupla
-            topo_d = ctk.CTkFrame(card_dupla, fg_color="transparent")
-            topo_d.pack(fill="x", padx=10, pady=(6, 2))
-
-            lbl_tag = ctk.CTkLabel(
-                topo_d,
-                text=f"DUPLA {num_dupla}",
-                font=("Segoe UI", 11, "bold"),
+            # 1. Rótulo com número
+            lbl_num = ctk.CTkLabel(
+                card_dupla,
+                text=f"{num_dupla}.",
+                width=24,
+                font=("Segoe UI", 13, "bold"),
                 text_color=COR_TEXTO_SUAVE,
             )
-            lbl_tag.pack(side="left")
+            lbl_num.pack(side="left", padx=(8, 4), pady=6)
 
-            # Linha da Pessoa A (sem frames intermediários)
-            linha_a = ctk.CTkFrame(
+            # 2. Botão da Pessoa A (clique abre troca)
+            txt_a = f"{nome_a} ⭐" if (p_a and p_a.experiente) else nome_a
+            btn_a = ctk.CTkButton(
                 card_dupla,
+                text=txt_a,
                 fg_color=COR_CARTAO,
-                corner_radius=6,
-                border_color=COR_BORDA,
-                border_width=1,
-            )
-            linha_a.pack(fill="x", padx=8, pady=3)
-
-            lbl_a = ctk.CTkLabel(
-                linha_a,
-                text=f"👤 {nome_a}",
-                font=("Segoe UI", 13, "bold"),
+                hover_color=COR_SECUNDARIA_HOVER,
                 text_color=COR_TEXTO,
+                font=("Segoe UI", 14, "bold"),
+                height=34,
                 anchor="w",
+                command=lambda ip=idx_plantao, sa=dupla.pessoa_a: self._abrir_dialogo_troca(ip, sa),
             )
-            lbl_a.pack(side="left", padx=(8, 0), pady=4)
+            btn_a.pack(side="left", fill="x", expand=True, padx=2, pady=4)
 
-            if p_a and p_a.experiente:
-                lbl_exp_a = ctk.CTkLabel(
-                    linha_a,
-                    text="⭐ Experiente",
-                    font=("Segoe UI", 10, "bold"),
-                    text_color=COR_AVISO_TEXTO,
-                    fg_color=COR_AVISO_FUNDO,
-                    corner_radius=4,
-                    padx=6,
-                    pady=1,
-                )
-                lbl_exp_a.pack(side="left", padx=8, pady=4)
-
-            btn_trocar_a = BotaoGrande(
-                linha_a,
-                "Trocar",
-                comando=lambda ip=idx_plantao, sa=dupla.pessoa_a: self._abrir_dialogo_troca(ip, sa),
-                variante="secundaria",
-                height=26,
-                width=65,
-            )
-            btn_trocar_a.pack(side="right", padx=6, pady=3)
-
-            # Linha da Pessoa B (sem frames intermediários)
-            linha_b = ctk.CTkFrame(
+            # 3. Separador "&"
+            lbl_sep = ctk.CTkLabel(
                 card_dupla,
+                text="&",
+                font=FONTE_AJUDA,
+                text_color=COR_TEXTO_SUAVE,
+            )
+            lbl_sep.pack(side="left", padx=4, pady=6)
+
+            # 4. Botão da Pessoa B (clique abre troca)
+            txt_b = f"{nome_b} ⭐" if (p_b and p_b.experiente) else nome_b
+            btn_b = ctk.CTkButton(
+                card_dupla,
+                text=txt_b,
                 fg_color=COR_CARTAO,
-                corner_radius=6,
-                border_color=COR_BORDA,
-                border_width=1,
-            )
-            linha_b.pack(fill="x", padx=8, pady=(2, 6))
-
-            lbl_b = ctk.CTkLabel(
-                linha_b,
-                text=f"👤 {nome_b}",
-                font=("Segoe UI", 13, "bold"),
+                hover_color=COR_SECUNDARIA_HOVER,
                 text_color=COR_TEXTO,
+                font=("Segoe UI", 14, "bold"),
+                height=34,
                 anchor="w",
+                command=lambda ip=idx_plantao, sb=dupla.pessoa_b: self._abrir_dialogo_troca(ip, sb),
             )
-            lbl_b.pack(side="left", padx=(8, 0), pady=4)
-
-            if p_b and p_b.experiente:
-                lbl_exp_b = ctk.CTkLabel(
-                    linha_b,
-                    text="⭐ Experiente",
-                    font=("Segoe UI", 10, "bold"),
-                    text_color=COR_AVISO_TEXTO,
-                    fg_color=COR_AVISO_FUNDO,
-                    corner_radius=4,
-                    padx=6,
-                    pady=1,
-                )
-                lbl_exp_b.pack(side="left", padx=8, pady=4)
-
-            btn_trocar_b = BotaoGrande(
-                linha_b,
-                "Trocar",
-                comando=lambda ip=idx_plantao, sb=dupla.pessoa_b: self._abrir_dialogo_troca(ip, sb),
-                variante="secundaria",
-                height=26,
-                width=65,
-            )
-            btn_trocar_b.pack(side="right", padx=6, pady=3)
+            btn_b.pack(side="left", fill="x", expand=True, padx=(2, 8), pady=4)
 
     def _abrir_dialogo_troca(self, indice_plantao: int, id_sai: int) -> None:
         """Abre modal com lista de opções para substituir uma pessoa no plantão."""
@@ -482,6 +450,7 @@ class TelaEscala(ctk.CTkFrame):
 
         scroll = ctk.CTkScrollableFrame(janela, fg_color="transparent")
         scroll.pack(fill="both", expand=True, padx=20, pady=(0, 16))
+        configurar_rolagem_suave(scroll)
 
         opcoes = pessoas_para_troca(self.escala_ativa, indice_plantao, self.dados)
         for pessoa_entra, obs in opcoes:
@@ -582,15 +551,52 @@ class TelaEscala(ctk.CTkFrame):
         self.btn_copiar.configure(text="✅ Copiado!")
         self.after(2000, lambda: self.btn_copiar.configure(text=texto_original))
 
+    def _atualizar_destaque_botoes_periodo(self, modo: str = "esta") -> None:
+        """Atualiza cores dos botões de período e texto descritivo do intervalo de datas."""
+        self._modo_periodo = modo
+        botoes = {
+            "esta": self.btn_esta_semana,
+            "proxima": self.btn_prox_semana,
+            "outra": self.btn_outra_data,
+        }
+        for chave, btn in botoes.items():
+            if chave == modo:
+                btn.configure(
+                    fg_color=COR_PRIMARIA,
+                    text_color="#FFFFFF",
+                    hover_color=COR_PRIMARIA_HOVER,
+                )
+            else:
+                btn.configure(
+                    fg_color=COR_SECUNDARIA,
+                    text_color=COR_SECUNDARIA_TEXTO,
+                    hover_color=COR_SECUNDARIA_HOVER,
+                )
+        self._atualizar_rotulo_periodo()
+
+    def _atualizar_rotulo_periodo(self) -> None:
+        """Atualiza o rótulo com as datas do período selecionado."""
+        try:
+            qtd_sem = int(self.combo_semanas.get())
+        except (ValueError, AttributeError):
+            qtd_sem = 1
+        fim = self.data_inicio + timedelta(days=7 * qtd_sem - 1)
+        if hasattr(self, "lbl_periodo_datas"):
+            self.lbl_periodo_datas.configure(
+                text=f"📅 {formatar_data(self.data_inicio)} a {formatar_data(fim)}"
+            )
+
     def _selecionar_esta_semana(self) -> None:
         """Ajusta a data de início para a segunda-feira atual."""
         self.data_inicio = inicio_da_semana(date.today())
         self.btn_outra_data.configure(text="Escolher data…")
+        self._atualizar_destaque_botoes_periodo("esta")
 
     def _selecionar_proxima_semana(self) -> None:
         """Ajusta a data de início para a segunda-feira da próxima semana."""
         self.data_inicio = inicio_da_semana(date.today()) + timedelta(days=7)
         self.btn_outra_data.configure(text="Escolher data…")
+        self._atualizar_destaque_botoes_periodo("proxima")
 
     def _abrir_dialogo_escolher_data(self) -> None:
         """Abre modal para digitar data customizada de início."""
@@ -609,6 +615,7 @@ class TelaEscala(ctk.CTkFrame):
                 data_lida = ler_data(campo.get())
                 self.data_inicio = data_lida
                 self.btn_outra_data.configure(text=formatar_data(data_lida))
+                self._atualizar_destaque_botoes_periodo("outra")
                 janela.destroy()
             except ErroEscala as err:
                 mostrar_erro(janela, str(err))

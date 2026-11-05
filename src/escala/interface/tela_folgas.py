@@ -30,6 +30,7 @@ from src.escala.interface.componentes import (
     CalendarioMensal,
     CartaoFrame,
     configurar_janela_modal,
+    configurar_rolagem_suave,
     mostrar_erro,
 )
 from src.escala.modelos import DadosDoPrograma, ErroEscala, Pessoa
@@ -49,6 +50,7 @@ class TelaFolgas(ctk.CTkFrame):
         self.dados = dados
         self.ao_mudar = ao_mudar
         self.pessoa_selecionada: Pessoa | None = None
+        self._botoes_pessoas: dict[int, ctk.CTkButton] = {}
 
         self._construir_layout()
         self.atualizar_tela()
@@ -83,111 +85,37 @@ class TelaFolgas(ctk.CTkFrame):
 
         self.scroll_pessoas = ctk.CTkScrollableFrame(self.painel_esquerdo, fg_color="transparent")
         self.scroll_pessoas.pack(fill="both", expand=True, padx=8, pady=(0, 12))
+        configurar_rolagem_suave(self.scroll_pessoas)
 
-        # Painel Direito — Calendário e Lista de Folgas
+        # Painel Direito — Estrutura persistente (evita recriação ao trocar de pessoa)
         self.painel_direito = ctk.CTkFrame(self, fg_color="transparent")
         self.painel_direito.grid(row=0, column=1, sticky="nsew", padx=(10, 20), pady=20)
 
-    def atualizar_tela(self) -> None:
-        """Atualiza a lista de pessoas à esquerda e o painel de folgas à direita."""
-        # Se a pessoa selecionada deixou de existir ou ficou inativa, reseta seleção
-        if self.pessoa_selecionada is not None:
-            pessoa_atual = self.dados.buscar_pessoa(self.pessoa_selecionada.id)
-            if pessoa_atual is None or not pessoa_atual.ativo:
-                self.pessoa_selecionada = None
+        # 1. Estado vazio persistente à direita
+        self.frame_vazio_direito = CartaoFrame(self.painel_direito)
+        lbl_vazio = ctk.CTkLabel(
+            self.frame_vazio_direito,
+            text="Nenhuma pessoa selecionada.\n\nSelecione um integrante na lista à esquerda para visualizar,\nmarcar folgas individuais ou registrar períodos de férias.",
+            font=FONTE_SUBTITULO,
+            text_color=COR_TEXTO_SUAVE,
+            justify="center",
+        )
+        lbl_vazio.pack(expand=True)
 
-        self._atualizar_lista_pessoas()
-        self._atualizar_painel_direito()
+        # 2. Conteúdo de folgas persistente à direita
+        self.frame_conteudo_direito = ctk.CTkFrame(self.painel_direito, fg_color="transparent")
 
-    def _atualizar_lista_pessoas(self) -> None:
-        """Reconstrói a lista de pessoas ativas com contador de folgas."""
-        for filho in self.scroll_pessoas.winfo_children():
-            filho.destroy()
-
-        ativas = self.dados.pessoas_ativas()
-        if not ativas:
-            lbl_vazio = ctk.CTkLabel(
-                self.scroll_pessoas,
-                text="Nenhuma pessoa ativa cadastrada.",
-                font=FONTE_CORPO,
-                text_color=COR_TEXTO_SUAVE,
-            )
-            lbl_vazio.pack(pady=20)
-            return
-
-        hoje = date.today()
-        for pessoa in ativas:
-            selecionada = (
-                self.pessoa_selecionada is not None
-                and self.pessoa_selecionada.id == pessoa.id
-            )
-
-            folgas_futuras = sum(1 for d in pessoa.indisponibilidades if d >= hoje)
-            total_folgas = len(pessoa.indisponibilidades)
-
-            cor_fundo = COR_PRIMARIA if selecionada else COR_FUNDO
-            cor_texto = "#FFFFFF" if selecionada else COR_TEXTO
-            cor_sub = "#E0E7FF" if selecionada else COR_TEXTO_SUAVE
-
-            item_btn = ctk.CTkButton(
-                self.scroll_pessoas,
-                text="",
-                fg_color=cor_fundo,
-                hover_color=COR_PRIMARIA_HOVER if selecionada else COR_BORDA,
-                corner_radius=8,
-                height=48,
-                command=lambda p=pessoa: self._selecionar_pessoa(p),
-            )
-            item_btn.pack(fill="x", pady=4, padx=4)
-
-            # Conteúdo dentro do botão
-            lbl_nome = ctk.CTkLabel(
-                item_btn,
-                text=pessoa.nome,
-                font=FONTE_CORPO,
-                text_color=cor_texto,
-            )
-            lbl_nome.place(relx=0.06, rely=0.25, anchor="w")
-
-            texto_folgas = (
-                f"{folgas_futuras} futura(s)"
-                if folgas_futuras > 0
-                else (f"{total_folgas} total" if total_folgas > 0 else "Sem folgas")
-            )
-            lbl_info = ctk.CTkLabel(
-                item_btn,
-                text=texto_folgas,
-                font=FONTE_AJUDA,
-                text_color=cor_sub,
-            )
-            lbl_info.place(relx=0.94, rely=0.25, anchor="e")
-
-    def _selecionar_pessoa(self, pessoa: Pessoa) -> None:
-        """Define a pessoa ativa para edição de folgas."""
-        self.pessoa_selecionada = pessoa
-        self.atualizar_tela()
-
-    def _atualizar_painel_direito(self) -> None:
-        """Desenha o estado vazio ou o calendário da pessoa selecionada."""
-        for filho in self.painel_direito.winfo_children():
-            filho.destroy()
-
-        if self.pessoa_selecionada is None:
-            self._mostrar_estado_vazio_direito()
-            return
-
-        # Cabeçalho da pessoa
-        topo = ctk.CTkFrame(self.painel_direito, fg_color="transparent")
+        topo = ctk.CTkFrame(self.frame_conteudo_direito, fg_color="transparent")
         topo.pack(fill="x", pady=(0, 12))
 
-        lbl_nome = ctk.CTkLabel(
+        self.lbl_nome_pessoa = ctk.CTkLabel(
             topo,
-            text=f"📅 Folgas de {self.pessoa_selecionada.nome}",
+            text="",
             font=FONTE_TITULO,
             text_color=COR_TEXTO,
             anchor="w",
         )
-        lbl_nome.pack(side="left", fill="x", expand=True)
+        self.lbl_nome_pessoa.pack(side="left", fill="x", expand=True)
 
         btn_ferias = BotaoGrande(
             topo,
@@ -198,11 +126,10 @@ class TelaFolgas(ctk.CTkFrame):
         )
         btn_ferias.pack(side="right")
 
-        # Container rolável para o calendário e a lista
-        scroll_conteudo = ctk.CTkScrollableFrame(self.painel_direito, fg_color="transparent")
+        scroll_conteudo = ctk.CTkScrollableFrame(self.frame_conteudo_direito, fg_color="transparent")
         scroll_conteudo.pack(fill="both", expand=True)
+        configurar_rolagem_suave(scroll_conteudo)
 
-        # Instrução de clique
         lbl_dica = ctk.CTkLabel(
             scroll_conteudo,
             text="Clique diretamente no dia do calendário para marcar ou desmarcar folga (vermelho = folga marcada):",
@@ -212,60 +139,154 @@ class TelaFolgas(ctk.CTkFrame):
         )
         lbl_dica.pack(fill="x", pady=(0, 8))
 
-        # Calendário Mensal
+        # Calendário persistente reutilizado in-place
         self.calendario = CalendarioMensal(
             scroll_conteudo,
-            datas_marcadas=self.pessoa_selecionada.indisponibilidades,
+            datas_marcadas=set(),
             ao_clicar=self._alternar_dia_folga,
         )
         self.calendario.pack(fill="x", pady=(0, 16))
 
-        # Lista de datas registradas
-        self._construir_lista_datas_registradas(scroll_conteudo)
+        # Cartão de lista das datas registradas
+        self.cartao_lista_datas = CartaoFrame(scroll_conteudo)
+        self.cartao_lista_datas.pack(fill="x", pady=(0, 16))
 
-    def _mostrar_estado_vazio_direito(self) -> None:
-        """Exibe mensagem quando ninguém foi selecionado."""
-        cartao = CartaoFrame(self.painel_direito)
-        cartao.pack(fill="both", expand=True)
-
-        lbl = ctk.CTkLabel(
-            cartao,
-            text="Nenhuma pessoa selecionada.\n\nSelecione um integrante na lista à esquerda para visualizar,\nmarcar folgas individuais ou registrar períodos de férias.",
-            font=FONTE_SUBTITULO,
-            text_color=COR_TEXTO_SUAVE,
-            justify="center",
-        )
-        lbl.pack(expand=True)
-
-    def _construir_lista_datas_registradas(self, container) -> None:
-        """Exibe os dias marcados organizados em ordem cronológica com botão de remoção."""
-        cartao_lista = CartaoFrame(container)
-        cartao_lista.pack(fill="x", pady=(0, 16))
-
-        lbl_tit = ctk.CTkLabel(
-            cartao_lista,
+        lbl_tit_lista = ctk.CTkLabel(
+            self.cartao_lista_datas,
             text="Todas as folgas cadastradas:",
             font=FONTE_SUBTITULO,
             text_color=COR_TEXTO,
             anchor="w",
         )
-        lbl_tit.pack(fill="x", padx=16, pady=(12, 8))
+        lbl_tit_lista.pack(fill="x", padx=16, pady=(12, 8))
 
-        if not self.pessoa_selecionada.indisponibilidades:
+        self.container_linhas_datas = ctk.CTkFrame(self.cartao_lista_datas, fg_color="transparent")
+        self.container_linhas_datas.pack(fill="x", padx=16, pady=(0, 8))
+
+    def atualizar_tela(self) -> None:
+        """Atualiza a lista de pessoas à esquerda e o painel de folgas à direita."""
+        if self.pessoa_selecionada is not None:
+            pessoa_atual = self.dados.buscar_pessoa(self.pessoa_selecionada.id)
+            if pessoa_atual is None or not pessoa_atual.ativo:
+                self.pessoa_selecionada = None
+
+        self._atualizar_lista_pessoas()
+        self._atualizar_painel_direito()
+
+    def _atualizar_lista_pessoas(self) -> None:
+        """Reconstrói ou atualiza in-place a lista de pessoas ativas com 1 único CTkButton por item."""
+        ativas = self.dados.pessoas_ativas()
+        if not ativas:
+            for filho in self.scroll_pessoas.winfo_children():
+                filho.destroy()
+            self._botoes_pessoas.clear()
+            lbl_vazio = ctk.CTkLabel(
+                self.scroll_pessoas,
+                text="Nenhuma pessoa ativa cadastrada.",
+                font=FONTE_CORPO,
+                text_color=COR_TEXTO_SUAVE,
+            )
+            lbl_vazio.pack(pady=20)
+            return
+
+        hoje = date.today()
+        ids_ativas = [p.id for p in ativas]
+
+        # Se a lista de botões já corresponde aos mesmos IDs, apenas atualiza texto e cores
+        if list(self._botoes_pessoas.keys()) == ids_ativas:
+            for pessoa in ativas:
+                btn = self._botoes_pessoas[pessoa.id]
+                selecionada = (
+                    self.pessoa_selecionada is not None
+                    and self.pessoa_selecionada.id == pessoa.id
+                )
+                folgas_futuras = sum(1 for d in pessoa.indisponibilidades if d >= hoje)
+                txt = f"  {pessoa.nome}   •   {folgas_futuras} folga(s)" if folgas_futuras > 0 else f"  {pessoa.nome}"
+                btn.configure(
+                    text=txt,
+                    fg_color=COR_PRIMARIA if selecionada else COR_FUNDO,
+                    hover_color=COR_PRIMARIA_HOVER if selecionada else COR_BORDA,
+                    text_color="#FFFFFF" if selecionada else COR_TEXTO,
+                )
+            return
+
+        # Reconstrói a lista de botões se a equipe mudou
+        for filho in self.scroll_pessoas.winfo_children():
+            filho.destroy()
+        self._botoes_pessoas.clear()
+
+        for pessoa in ativas:
+            selecionada = (
+                self.pessoa_selecionada is not None
+                and self.pessoa_selecionada.id == pessoa.id
+            )
+            folgas_futuras = sum(1 for d in pessoa.indisponibilidades if d >= hoje)
+            txt = f"  {pessoa.nome}   •   {folgas_futuras} folga(s)" if folgas_futuras > 0 else f"  {pessoa.nome}"
+
+            item_btn = ctk.CTkButton(
+                self.scroll_pessoas,
+                text=txt,
+                fg_color=COR_PRIMARIA if selecionada else COR_FUNDO,
+                hover_color=COR_PRIMARIA_HOVER if selecionada else COR_BORDA,
+                text_color="#FFFFFF" if selecionada else COR_TEXTO,
+                corner_radius=8,
+                height=40,
+                anchor="w",
+                font=FONTE_CORPO,
+                command=lambda p=pessoa: self._selecionar_pessoa(p),
+            )
+            item_btn.pack(fill="x", pady=2, padx=4)
+            self._botoes_pessoas[pessoa.id] = item_btn
+
+    def _selecionar_pessoa(self, pessoa: Pessoa) -> None:
+        """Seleciona uma pessoa atualizando apenas cores dos botões e o painel direito."""
+        self.pessoa_selecionada = pessoa
+
+        # Atualiza apenas as cores dos botões sem destruir a lista
+        for pid, btn in self._botoes_pessoas.items():
+            sel = (pid == pessoa.id)
+            btn.configure(
+                fg_color=COR_PRIMARIA if sel else COR_FUNDO,
+                hover_color=COR_PRIMARIA_HOVER if sel else COR_BORDA,
+                text_color="#FFFFFF" if sel else COR_TEXTO,
+            )
+
+        self._atualizar_painel_direito()
+
+    def _atualizar_painel_direito(self) -> None:
+        """Alterna entre estado vazio e conteúdo de folgas, reaproveitando o calendário."""
+        if self.pessoa_selecionada is None:
+            self.frame_conteudo_direito.pack_forget()
+            self.frame_vazio_direito.pack(fill="both", expand=True)
+            return
+
+        self.frame_vazio_direito.pack_forget()
+        self.frame_conteudo_direito.pack(fill="both", expand=True)
+
+        self.lbl_nome_pessoa.configure(text=f"📅 Folgas de {self.pessoa_selecionada.nome}")
+        self.calendario.atualizar_datas_marcadas(self.pessoa_selecionada.indisponibilidades)
+        self._construir_lista_datas_registradas()
+
+    def _construir_lista_datas_registradas(self) -> None:
+        """Exibe os dias marcados organizados em ordem cronológica com botão de remoção."""
+        for filho in self.container_linhas_datas.winfo_children():
+            filho.destroy()
+
+        if not self.pessoa_selecionada or not self.pessoa_selecionada.indisponibilidades:
             lbl_nenhuma = ctk.CTkLabel(
-                cartao_lista,
+                self.container_linhas_datas,
                 text="Nenhuma folga cadastrada no momento.",
                 font=FONTE_CORPO,
                 text_color=COR_TEXTO_SUAVE,
                 anchor="w",
             )
-            lbl_nenhuma.pack(fill="x", padx=16, pady=(0, 12))
+            lbl_nenhuma.pack(fill="x", pady=4)
             return
 
         datas_ordenadas = sorted(self.pessoa_selecionada.indisponibilidades)
         for d in datas_ordenadas:
-            linha = ctk.CTkFrame(cartao_lista, fg_color="transparent")
-            linha.pack(fill="x", padx=16, pady=3)
+            linha = ctk.CTkFrame(self.container_linhas_datas, fg_color="transparent")
+            linha.pack(fill="x", pady=2)
 
             lbl_data = ctk.CTkLabel(
                 linha,
@@ -281,12 +302,9 @@ class TelaFolgas(ctk.CTkFrame):
                 "Remover",
                 comando=lambda dia=d: self._remover_dia(dia),
                 variante="secundaria",
-                height=28,
+                height=26,
             )
             btn_remover.pack(side="right")
-
-        # Espaço ao final do cartão
-        ctk.CTkLabel(cartao_lista, text="", height=4).pack()
 
     def _alternar_dia_folga(self, dia: date) -> None:
         """Marca ou desmarca a data clicada no calendário para a pessoa atual."""

@@ -23,6 +23,7 @@ from src.escala.interface.componentes import (
     BotaoGrande,
     CartaoFrame,
     configurar_janela_modal,
+    configurar_rolagem_suave,
 )
 from src.escala.modelos import DadosDoPrograma
 
@@ -94,6 +95,7 @@ class JanelaJustica(ctk.CTkToplevel):
         # Linhas roláveis
         scroll_linhas = ctk.CTkScrollableFrame(tabela_frame, fg_color="transparent")
         scroll_linhas.pack(fill="both", expand=True, padx=6, pady=(0, 10))
+        configurar_rolagem_suave(scroll_linhas)
 
         linhas = quadro_de_justica(self.dados)
         if not linhas:
@@ -106,8 +108,9 @@ class JanelaJustica(ctk.CTkToplevel):
             lbl_vazio.pack(pady=40)
             return
 
-        for item in linhas:
-            linha = ctk.CTkFrame(scroll_linhas, fg_color="transparent", height=34)
+        for idx, item in enumerate(linhas):
+            cor_linha = COR_FUNDO if idx % 2 == 0 else "transparent"
+            linha = ctk.CTkFrame(scroll_linhas, fg_color=cor_linha, height=34, corner_radius=6)
             linha.pack(fill="x", pady=2)
 
             # 1. Posição na fila

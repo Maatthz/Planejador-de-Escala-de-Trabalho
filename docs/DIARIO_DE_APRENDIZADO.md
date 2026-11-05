@@ -210,3 +210,20 @@ e `janela_justica.py` na interface).
 **Conceitos aprendidos:**
 - **Renderização preguiçosa (Lazy Rendering / Evaluation):** padrão que posterga o processamento ou renderização de um elemento até o momento exato em que ele se torna necessário e visível, poupando ciclos de CPU e memória.
 - **Achatamento de árvore de componentes (Widget Tree Flattening):** técnica de simplificação da árvore visual que remove contêineres intermediários redundantes, diminuindo o custo de cálculo de geometria e chamadas de desenho no motor gráfico.
+
+## 04/11/2026 — Auditoria do Tech Lead: Especificação da Fase 7.1 (Performance e UI/UX)
+
+**O que mudou:** após medir o desempenho real da interface (1.015 widgets vivos, 2,2 s para abrir e 1,1 s ao clicar
+em uma pessoa na aba Folgas), o `AGENTS.md` recebeu as seções **10.4 (Regras de Performance no CustomTkinter)**,
+**10.6 (Especificação da Refatoração Visual por Arquivo)** e a **Fase 7.1** no roteiro e nos testes obrigatórios.
+
+**Decisões:**
+- Proibir aninhamento de cartões com borda ("efeito boneca russa"): no máximo 1 nível de `CartaoFrame` dentro de áreas roláveis.
+- Proibir `.place()` de `CTkLabel` sobre `CTkButton` (causava triplicação de widgets e perda de cliques em `tela_folgas.py`).
+- Obrigar reuso de widgets (*in-place update* com `.configure()`) no `CalendarioMensal` (42 botões fixos) e na seleção de pessoas de `TelaFolgas`, sem chamar `destroy()` em massa.
+- Simplificar cada dupla na aba Escala de 13 widgets para 5 widgets, tornando o próprio botão com o nome da pessoa o acionador de troca.
+
+**Conceitos aprendidos:**
+- **Árvore de Widgets (*Widget Tree*) e custo de Canvas:** em CustomTkinter, cada borda ou canto arredondado é um `tk.Canvas` separado; aninhar muitos níveis degrada a rolagem.
+- **Atualização *in-place* vs. Destruir e Recriar (*Object Reuse*):** manter os objetos visuais vivos na memória e alterar apenas suas propriedades (`.configure()`) é dezenas de vezes mais rápido do que destruir (`destroy()`) e instanciar novos widgets a cada clique.
+- **Diagnóstico baseado em métricas (*Profiling*):** medir o tempo em milissegundos e contar objetos antes de otimizar.

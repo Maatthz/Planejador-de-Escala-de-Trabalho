@@ -594,7 +594,7 @@ def excluir_escala(dados: DadosDoPrograma, indice: int) -> None:
 ### `exportar.py`
 ```python
 def gerar_texto_whatsapp(escala: Escala, dados: DadosDoPrograma) -> str:
-    """Monta o texto da seção 10.6 para colar no WhatsApp."""
+    """Monta o texto da seção 10.7 para colar no WhatsApp."""
 ```
 
 ### `textos_ajuda.py`
@@ -712,31 +712,83 @@ Para a interface parecer limpa, profissional e fácil para uma pessoa leiga, **t
    - Listas que podem crescer (equipe, plantões, configurações, quadro de justiça) ficam sempre dentro de `ctk.CTkScrollableFrame`.
    - Toda janela secundária (`CTkToplevel`) deve ser **modal** (`transient(pai)`, `grab_set()`, `focus()`), abrir centralizada sobre a janela principal e fechar com a tecla `Esc`.
 
-### 10.4 `componentes.py`
+### 10.4 Regras de Performance no CustomTkinter (OBRIGATÓRIAS)
+O CustomTkinter desenha cada widget com `corner_radius > 0` ou `border_width > 0` usando um `tk.Canvas` interno que recalcula formas vetoriais a cada evento `<Configure>` (rolagem ou redimensionamento). Para evitar engasgos ao rolar ou trocar de aba, siga estritamente estas 5 regras:
+
+1. **Proibido aninhar cartões com borda ("efeito boneca russa"):**
+   - Dentro de um `CTkScrollableFrame`, o máximo permitido é **1 nível de `CartaoFrame`** (`border_width=1`).
+   - Todos os containers internos dentro de um `CartaoFrame` devem ter `border_width=0` (cores planas ou `fg_color="transparent"`).
+2. **Proibido colar `CTkLabel` com `.place()` em cima de `CTkButton`:**
+   - Triplica a quantidade de widgets e rouba o clique do mouse quando o cursor cai sobre o texto.
+   - Use sempre um único `CTkButton` com `anchor="w"` e o texto formatado diretamente na propriedade `text`.
+3. **Reuso de widgets (*In-place Update*) — proibido `destroy()` em massa em cliques frequentes:**
+   - **`CalendarioMensal`**: crie os 42 botões (`self._botoes_dias: list[ctk.CTkButton]`) **uma única vez** em `_construir_estrutura()`. Em `_redesenhar_grade()`, **nunca** chame `destroy()`: apenas percorra os 42 botões existentes atualizando `.configure(text=..., fg_color=..., hover_color=..., text_color=..., border_width=..., command=...)`. Quando `num_dia == 0`, configure o botão com `text=""`, `fg_color="transparent"`, `hover_color=COR_CARTAO`, `state="disabled"`, `command=None`.
+   - **`TelaFolgas`**: ao clicar em uma pessoa (`_selecionar_pessoa`), **não** destrua a lista da esquerda nem recrie o `CalendarioMensal` da direita. Guarde um dicionário `self._botoes_pessoas: dict[int, ctk.CTkButton]` e atualize com `.configure(...)` apenas o botão que deixou de estar selecionado e o novo selecionado. No painel direito, mantenha `self.calendario` instanciado uma única vez e apenas chame `self.calendario.atualizar_datas_marcadas(...)` + atualize a lista de datas registradas.
+4. **Inicialização sob demanda (*Lazy Initialization*) das abas em `JanelaPrincipal`:**
+   - Ao abrir o programa, apenas a aba visível (`👥 Equipe`) deve construir seus cartões internos imediatamente.
+   - As abas `📅 Folgas` e `📋 Escala` criam apenas sua estrutura leve no `__init__`, adiando a criação dos itens da lista/cartões para quando a aba for aberta pela primeira vez ou quando `atualizar_tela()` for chamado diretamente.
+5. **Rolagem suave no Windows (`configurar_rolagem_suave`):**
+   - Todo `CTkScrollableFrame` deve passar por `configurar_rolagem_suave(scroll_frame)` (em `componentes.py`), que ajusta a velocidade e o passo do canvas interno para evitar micro-redesenhos lentos na roda do mouse.
+
+### 10.5 `componentes.py`
 - Constantes de cores e fontes da seção 10.2.
 - `BotaoGrande(master, texto, comando, variante="primaria")` — variantes `"primaria"`, `"sucesso"`, `"secundaria"`, `"perigo"`.
 - `CartaoFrame(master)` — `CTkFrame` branco com borda e cantos arredondados.
 - `CampoComAjuda(master, chave_ajuda, widget)` — título + controle + explicação + exemplo em `COR_TEXTO_SUAVE` (de `textos_ajuda`).
-- `CalendarioMensal(master, datas_marcadas: set[date], ao_clicar: Callable[[date], None])` — grade 7×6 de botões, setas ◀ ▶ de mês, dias marcados em vermelho.
+- `CalendarioMensal(master, datas_marcadas: set[date], ao_clicar: Callable[[date], None])` — grade 7×6 de botões reutilizados (*in-place*), setas ◀ ▶ de mês, cabeçalhos `"Sáb"` e `"Dom"` destacados em `COR_PRIMARIA`, dia de hoje com borda azul e dias marcados em vermelho.
+- `configurar_rolagem_suave(scroll: ctk.CTkScrollableFrame) -> None` — otimiza o scroll do `CTkScrollableFrame`.
 - `configurar_janela_modal(janela: ctk.CTkToplevel, pai: ctk.CTk, titulo: str, largura: int, altura: int) -> None`.
 - `perguntar_sim_nao(titulo, texto) -> bool`, `mostrar_erro(texto)`, `mostrar_info(texto)`.
 
-### 10.5 Telas
-1. **`JanelaPrincipal(ctk.CTk)`**: tamanho inicial 1080×720 (mínimo 960×640); cabeçalho com título e botão **⚙️ Configurações**; 3 abas grandes (**👥 Equipe**, **📅 Folgas**, **📋 Escala**); rodapé com versão e aviso de atualização. Ao abrir: se `carregar()` devolver aviso (dados recuperados), mostrá-lo.
-2. **👥 Equipe** (`tela_equipe.py`): contador no topo (*"28 pessoas ativas (10 experientes)"*); lista em cartões/linhas claras (nome, selo `⭐ Experiente`, "inativo" em cinza no fim). Botões: **+ Adicionar pessoa** (primário), **Editar** (nome/experiente), **Desativar/Reativar** (reativar ajusta `data_entrada` para hoje). Remover definitivamente só em "Editar", com confirmação, e só se a pessoa não estiver em escalas confirmadas.
-3. **📅 Folgas** (`tela_folgas.py`): lista de pessoas ativas à esquerda (mostrando quantas folgas futuras cada uma tem); `CalendarioMensal` à direita (clicar no dia marca/desmarca) + lista das datas marcadas com botão "Remover". Botão **"Marcar período (férias)"**: de/até.
-4. **📋 Escala** (`tela_escala.py`):
-   - Topo (barra de controle em um `CartaoFrame`): período (**"Esta semana"** / **"Próxima semana"** / **"Escolher data…"**), nº de semanas, feriados do período + **"+ Adicionar feriado"** (`janela_feriado.py`), e botão **"Gerar escala"** (primário).
-   - Barra de status da escala (faixa de rascunho ou confirmada) + avisos de validação em amarelo.
-   - Área central rolável: cartões por plantão (*"📅 Sábado, 07/11 — Manhã"*), cada dupla numerada com dois menus (`CTkOptionMenu` ou diálogo de troca usando `pessoas_para_troca`).
-   - Rodapé da aba: à esquerda, **"📊 Quadro de justiça"** e **"📜 Escalas anteriores"** (secundários); à direita, **"✅ Confirmar escala"** e **"📋 Copiar para WhatsApp"** (sucesso).
-5. **📊 Quadro de justiça** (`janela_justica.py`):
-   - Explicação curta no topo: *"As pessoas no topo da lista têm prioridade para entrar na próxima escala (contando apenas escalas já confirmadas)."*
-   - Tabela rolável gerada por `quadro_de_justica(dados)` com colunas: **Ordem na fila** (`1º`, `2º`…), **Nome** (com ⭐), **Plantões feitos** (`plantoes_reais`), **Em feriados** (`feriados_trabalhados`), **Último plantão** (`07/11` ou `"Nunca"`), **Observação** (mostra *"Entrou/voltou empatado"* quando `carga_justica > plantoes_reais`).
-6. **📜 Escalas anteriores** (`janela_historico.py`): listar escalas confirmadas por período, abrir para visualizar/trocar pessoas, copiar para WhatsApp ou excluir (com confirmação).
-7. **⚙️ Configurações** (`janela_configuracoes.py`): seções **Turnos**, **Feriados**, **Duplas**, **Escala**, **Mensagem** e **Opções avançadas** (recolhida por padrão). Todo campo usa `CampoComAjuda`. Botões **Salvar** (primário), **Cancelar** (secundário), **Restaurar padrão** (perigo). Validar (nº de duplas ≥ 1; avisar se 2 × duplas de um dia > pessoas ativas).
+### 10.6 Especificação das Telas e Guia da Refatoração Visual (Fase 7.1)
+Para o programador executar a **Fase 7.1**, siga exatamente este roteiro arquivo por arquivo, preservando todos os nomes de atributos/métodos exigidos pelos testes existentes:
 
-### 10.6 Texto para WhatsApp (formato exato)
+1. **`JanelaPrincipal(ctk.CTk)` (`janela_principal.py`)**:
+   - Tamanho inicial 1080×720 (mínimo 960×640).
+   - Adicionar uma linha divisória sutil (`ctk.CTkFrame(self, height=1, fg_color=COR_BORDA)`) logo abaixo do cabeçalho e logo acima do rodapé para dar acabamento visual limpo.
+   - Marcar `_abas_desatualizadas = {"folgas", "escala"}` na inicialização e não chamar `atualizar_tela()` pesado de `Folgas` e `Escala` antes de o usuário abrir essas abas (nota: se um teste chamar `tela_folgas.atualizar_tela()` ou `tela_escala.atualizar_tela()`, funciona normalmente).
+
+2. **👥 Equipe (`tela_equipe.py`)**:
+   - Topo: `self.lbl_contador` à esquerda (*"👥 Equipe — 28 pessoas ativas (10 experientes)"*) e botão **"+ Adicionar pessoa"** (primário) à direita.
+   - **Layout em grade de 2 colunas** dentro de `self.scroll_lista` (`grid_columnconfigure(0, weight=1, uniform="col_equipe")` e `grid_columnconfigure(1, weight=1, uniform="col_equipe")`).
+   - Quando `not self.dados.pessoas`, exibir 1 único `CartaoFrame` de estado vazio dentro de `self.scroll_lista` (mantendo `len(self.scroll_lista.winfo_children()) == 1`).
+   - Cada pessoa é um `CartaoFrame` posicionado com `.grid(row=idx // 2, column=idx % 2, sticky="ew", padx=6, pady=4)` contendo **no máximo 4 widgets internos**:
+     1. Um único `CTkLabel` à esquerda com o nome e o indicador integrado no texto: `f"{pessoa.nome}  ⭐"` (se `experiente` e `ativo`), ou `f"{pessoa.nome}  (Inativo)"` em `COR_TEXTO_SUAVE` se inativo.
+     2. Se `experiente` e `ativo`, opcionalmente o selo compacto ou texto integrado (sem criar frames intermediários).
+     3. Botão `"Editar"` (`variante="secundaria"`, `height=30`, `width=68`).
+     4. Botão `"Desativar"` / `"Reativar"` (`variante="secundaria"`, `height=30`, `width=84`).
+
+3. **📅 Folgas (`tela_folgas.py` + `CalendarioMensal` em `componentes.py`)**:
+   - **Lista da esquerda (`self.scroll_pessoas`)**:
+     - Para cada pessoa ativa, criar **1 único `CTkButton`** (`height=40`, `anchor="w"`, `corner_radius=8`) sem nenhum `CTkLabel` ou `.place()` dentro.
+     - Texto do botão: `f"  {pessoa.nome}   •   {folgas_futuras} folga(s)"` quando `folgas_futuras > 0`, ou apenas `f"  {pessoa.nome}"` quando não houver folgas futuras.
+     - Guardar cada botão em `self._botoes_pessoas[pessoa.id] = item_btn`.
+   - **Seleção rápida (`_selecionar_pessoa`)**:
+     - Quando `self._botoes_pessoas` já estiver construído, `_selecionar_pessoa(pessoa)` **não** deve destruir `self.scroll_pessoas`: apenas atualiza as cores (`fg_color`, `hover_color`, `text_color`) dos botões em `self._botoes_pessoas` e atualiza o painel direito.
+   - **Painel direito (`self.painel_direito`)**:
+     - Manter dois frames filhos persistentes: `self.frame_vazio_direito` (estado vazio quando `self.pessoa_selecionada is None`) e `self.frame_conteudo_direito` (que contém `self.lbl_nome_pessoa`, botão `"Marcar período (férias)"`, `self.calendario` e `self.cartao_lista_datas`).
+     - Trocar de pessoa apenas alterna `pack_forget()`/`pack()`, atualiza `self.lbl_nome_pessoa.configure(text=...)`, chama `self.calendario.atualizar_datas_marcadas(self.pessoa_selecionada.indisponibilidades)` e reconstrói apenas as linhas dentro de `self.cartao_lista_datas`.
+
+4. **📋 Escala (`tela_escala.py`)**:
+   - **Barra de controle superior com estado visual claro:**
+     - Destacar visualmente qual botão de período está selecionado (`"Esta semana"`, `"Próxima semana"` ou `"Escolher data…"`): o botão ativo recebe `fg_color=COR_PRIMARIA, text_color="#FFFFFF", hover_color=COR_PRIMARIA_HOVER`, e os outros dois ficam com `fg_color=COR_SECUNDARIA, text_color=COR_SECUNDARIA_TEXTO, hover_color=COR_SECUNDARIA_HOVER`.
+     - Exibir na barra um rótulo claro com as datas do período selecionado (ex.: `"📅 02/11 a 08/11"`), atualizando-o sempre que mudar o período ou o nº de semanas.
+   - **Cartões de plantão limpos e rápidos (eliminação das 4 bordas aninhadas):**
+     - Cada plantão é 1 `CartaoFrame` em `self.scroll_plantoes`.
+     - Cabeçalho do plantão: fundo suave (`fg_color="#F1F5F9"` para dias normais ou `fg_color="#FEF3C7"` quando `plantao.eh_feriado`, `corner_radius=8`), com o título `"📅 Sábado, 07/11 — Manhã"` à esquerda e `"4 duplas • Clique em um nome para trocar"` à direita.
+     - Grade de duplas em 2 colunas (`frame_grid` com `fg_color="transparent"`):
+       - Cada dupla é **1 única linha plana** (`CTkFrame` com `fg_color=COR_FUNDO`, **`border_width=0`**, `corner_radius=8`) contendo apenas **4 elementos**:
+         1. `CTkLabel` com o número: `"1."`, `"2."` (`width=24`, `font=("Segoe UI", 13, "bold")`, `text_color=COR_TEXTO_SUAVE`).
+         2. `CTkButton` da Pessoa A (expansível `fill="x", expand=True`): texto `f"{nome_a} ⭐"` (se experiente) ou `nome_a`, `fg_color=COR_CARTAO`, `hover_color=COR_SECUNDARIA_HOVER`, `text_color=COR_TEXTO`, `font=("Segoe UI", 14, "bold")`, `height=34`, `anchor="w"`, comando abrindo `_abrir_dialogo_troca(idx_plantao, dupla.pessoa_a)`.
+         3. `CTkLabel` separador `"&"` (`text_color=COR_TEXTO_SUAVE`, `font=FONTE_AJUDA`).
+         4. `CTkButton` da Pessoa B (expansível `fill="x", expand=True`): mesmo estilo da Pessoa A, comando abrindo `_abrir_dialogo_troca(idx_plantao, dupla.pessoa_b)`.
+       - Isso reduz cada dupla de **13 widgets para 5 widgets**, elimina as caixas duplas poluídas e torna o próprio nome da pessoa o botão de troca.
+
+5. **📊 Quadro de justiça (`janela_justica.py`), 📜 Escalas anteriores (`janela_historico.py`) e ⚙️ Configurações (`janela_configuracoes.py`)**:
+   - Aplicar `configurar_rolagem_suave` nos `CTkScrollableFrame` de todas essas janelas.
+   - Em `janela_justica.py`, alternar sutilmente a cor de fundo das linhas pares e ímpares (`fg_color=COR_FUNDO` nas linhas pares, `"transparent"` nas ímpares) para facilitar a leitura horizontal da tabela (*zebra striping*).
+
+### 10.7 Texto para WhatsApp (formato exato)
 ```
 📋 *ESCALA DE PLANTÃO*
 
@@ -823,6 +875,7 @@ pyinstaller --onefile --windowed --name PlanejadorEscala --collect-data customtk
 | 5 ✅ | Aba Folgas + `CalendarioMensal` | Concluída | layout em grade, responsividade, estados vazios |
 | 6 ✅ | Aba Escala + feriado + quadro de justiça + histórico + copiar | Concluída | integração lógica ↔ interface, janelas modais, área de transferência |
 | 7 ✅ | ⚙️ Configurações com ajuda | Concluída | parametrização, validação de entrada |
+| 7.1 | Refatoração de Performance e Polimento Visual (UI/UX) | Regras das seções 10.4 e 10.6 aplicadas; `CalendarioMensal` e `TelaFolgas` reutilizando widgets sem `destroy()`; duplas sem bordas aninhadas; todos os testes + testes de performance verdes | Árvore de widgets (Widget Tree), reuso de objetos (*in-place update*), *layout thrashing*, hierarquia visual |
 | 8 | `iniciar.py` + `.exe` manual | `.exe` abre num PC sem Python | empacotamento |
 | 9 | `atualizador.py` + testes | Testes com monkeypatch verdes; atualização real testada com 2 versões | HTTP, API REST, threads, hash, versionamento semântico |
 | 10 | GitHub Actions | Tag gera Release com `.exe` e `.sha256` | CI/CD |
@@ -853,9 +906,14 @@ pyinstaller --onefile --windowed --name PlanejadorEscala --collect-data customtk
 
 **edicao**: troca para alguém já escalado no dia → `ErroEscala`; troca para alguém de folga → aviso; `confirmar_rascunho` substitui sobrepostas.
 
-**exportar**: texto exato da seção 10.6 (com e sem feriado e texto final).
+**exportar**: texto exato da seção 10.7 (com e sem feriado e texto final).
 
 **textos_ajuda**: todo campo de `Configuracao` tem ajuda com título, explicação e exemplo não vazios.
+
+**interface (performance e UI/UX — Fase 7.1)**:
+- `CalendarioMensal`: navegar entre meses (`_mes_proximo` / `_mes_anterior`) e chamar `atualizar_datas_marcadas` mantém exatamente os mesmos 42 objetos `CTkButton` (`id()` dos widgets em `_botoes_dias` não muda — prova de que não houve `destroy()`).
+- `TelaFolgas`: selecionar outra pessoa (`_selecionar_pessoa`) mantém os mesmos botões em `_botoes_pessoas` e a mesma instância de `self.calendario`.
+- `TelaEscala`: clicar em `"Esta semana"` ou `"Próxima semana"` destaca o botão ativo com `COR_PRIMARIA` e atualiza o texto do período; cada dupla na grade usa botões diretos para as duas pessoas sem caixas com borda aninhadas.
 
 **atualizador**: `comparar_versoes` ("v1.10.0" > "1.9.9"); SHA-256 diferente → `ErroAtualizacao` e arquivo apagado; erro de rede → `None`; repositório vazio → `None`.
 
@@ -878,6 +936,6 @@ pyinstaller --onefile --windowed --name PlanejadorEscala --collect-data customtk
 
 | Item | Situação |
 |---|---|
-| Fase atual | **Fase 7 concluída** → próxima: **Fase 8** |
+| Fase atual | **Fase 7 concluída** → próxima: **Fase 7.1 (Refatoração de Performance e Polimento Visual UI/UX — ver seções 10.4 e 10.6)** |
 | Repositório GitHub | Ainda não criado (`REPOSITORIO_GITHUB` vazio) |
-| Último commit relevante | Fase 7: janela de configuracoes e ajuda integrada com testes |
+| Último commit relevante | Auditoria do Tech Lead: especificação da Fase 7.1 (Performance e UI/UX) no AGENTS.md |

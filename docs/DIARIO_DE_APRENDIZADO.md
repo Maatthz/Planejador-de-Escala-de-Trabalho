@@ -185,3 +185,16 @@ e `janela_justica.py` na interface).
 **Conceitos aprendidos:**
 - **Parametrização:** transformação de regras e números do código em dados e variáveis configuráveis pelo usuário, tornando o programa flexível a mudanças sem necessidade de alterar o código-fonte.
 - **Validação de entrada (Input Validation):** verificação cuidadosa de tudo o que o usuário digita ou seleciona antes de persistir no sistema, garantindo integridade e emitindo mensagens claras quando algum valor foge do esperado.
+
+## 04/11/2026 — Refinamento Visual de Layout e Tipografia
+
+**O que mudou:** aprimorado o design visual da interface atendendo aos apontamentos de usabilidade: ampliação e destaque dos botões das abas principais (`janela_principal.py`), ajuste e redução da escala tipográfica na lista da equipe (`tela_equipe.py`) e redesenho da disposição das duplas na escala em cartões modulares em grade de 2 colunas com alinhamento perfeito (`tela_escala.py`).
+
+**Decisões:**
+- Abas com alta visibilidade: altura aumentada para 46px com tipografia em 16px negrito e contraste aprimorado, facilitando o clique da usuária.
+- Proporção tipográfica equilibrada na equipe: nomes em 14px com espaçamentos compactos e badges de status proporcionais, permitindo visualizar muito mais integrantes confortavelmente na tela.
+- Duplas em grade modular (2 colunas): duplas organizadas em cartões individuais simétricos com botão "Trocar" fixado à direita de cada integrante, eliminando o desalinhamento horizontal anterior.
+
+**Conceitos aprendidos:**
+- **Hierarquia visual (Visual Hierarchy):** técnica de design que orienta o olhar do usuário através do tamanho, peso e espaçamento das fontes, deixando claro o que é título, item de lista e ação secundária.
+- **Modularização de componentes em grade (Card Grid):** estruturação de informações agrupadas (duplas de plantão) em pequenos módulos visuais independentes distribuídos em linhas e colunas uniformes.

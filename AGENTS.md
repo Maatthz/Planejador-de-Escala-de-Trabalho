@@ -674,18 +674,18 @@ A interface segue uma separação rigorosa entre **estado** e **visualização**
 ### 10.2 Design System e Tokens Visuais (`componentes.py`)
 Para a interface parecer limpa, profissional e fácil para uma pessoa leiga, **todas** as telas devem usar as constantes abaixo (proibido espalhar cores ou tamanhos mágicos pelas telas):
 
-- **Modo de aparência fixo**: `ctk.set_appearance_mode("dark")` (modo escuro). Proporciona maior conforto visual, reduz o cansaço ocular e destaca os elementos de ação com alto contraste.
+- **Modo de aparência fixo**: `ctk.set_appearance_mode("dark")` (modo escuro grafite/charcoal). Proporciona elegância, conforto visual e contraste perfeito sem tons azulados frios.
 - **Paleta semântica** (cada cor tem um significado único):
   | Token | Cor (Hex) | Uso obrigatório |
   |---|---|---|
-  | `COR_FUNDO` | `#0F172A` | Fundo geral da janela (Slate 900) |
-  | `COR_CARTAO` | `#1E293B` | Fundo dos cartões e painéis (Slate 800, borda `#334155`, `corner_radius=10`) |
+  | `COR_FUNDO` | `#121214` | Fundo geral da janela (grafite profundo neutro) |
+  | `COR_CARTAO` | `#1E1E22` | Fundo dos cartões e painéis (superfície grafite fosca, borda `#2E2E34`, `corner_radius=10`) |
   | `COR_PRIMARIA` | `#3B82F6` (hover `#2563EB`) | **Apenas** a ação principal da tela ("Gerar escala", "+ Adicionar pessoa", "Salvar") |
   | `COR_SUCESSO` | `#16A34A` (hover `#15803D`) | Conclusão positiva ("✅ Confirmar escala", "📋 Copiar para WhatsApp") |
-  | `COR_SECUNDARIA` | `#334155` (texto `#F8FAFC`, hover `#475569`) | Ações auxiliares ("Editar", "📊 Quadro de justiça", "📜 Escalas anteriores") |
+  | `COR_SECUNDARIA` | `#2A2A30` (texto `#F4F4F5`, hover `#3A3A42`) | Ações auxiliares ("Editar", "📊 Quadro de justiça", "📜 Escalas anteriores") |
   | `COR_PERIGO` | `#DC2626` (hover `#B91C1C`) | Ações destrutivas ("Desativar", "Excluir", "Restaurar padrão") |
-  | `COR_AVISO_FUNDO` / `COR_AVISO_TEXTO` | `#451A03` / `#FDE68A` | Faixas de aviso (rascunho não confirmado, troca com observação) |
-  | `COR_TEXTO` / `COR_TEXTO_SUAVE` | `#F8FAFC` / `#94A3B8` | Texto principal (Slate 50) / textos de ajuda, exemplos e inativos (Slate 400) |
+  | `COR_AVISO_FUNDO` / `COR_AVISO_TEXTO` | `#3D2406` / `#FDE68A` | Faixas de aviso (rascunho não confirmado, troca com observação) |
+  | `COR_TEXTO` / `COR_TEXTO_SUAVE` | `#F4F4F5` / `#A1A1AA` | Texto principal (quase branco neutro) / textos de ajuda, exemplos e inativos (grafite médio) |
 - **Tipografia** (`Segoe UI`):
   - `FONTE_TITULO = ("Segoe UI", 20, "bold")` — título da aba/janela.
   - `FONTE_SUBTITULO = ("Segoe UI", 16, "bold")` — título de cartão (ex.: "Sábado, 07/11 — Manhã").

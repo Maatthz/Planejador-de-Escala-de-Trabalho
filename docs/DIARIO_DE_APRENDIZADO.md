@@ -244,18 +244,18 @@ em uma pessoa na aba Folgas), o `AGENTS.md` recebeu as seções **10.4 (Regras d
 - **Layout Thrashing:** degradação drástica de fluidez que ocorre quando o programa força sucessivas destruições e recriações de elementos geométricos, obrigando o motor gráfico a recalcular dimensões e redesenhar formas vetoriais repetidamente em um curto intervalo de tempo.
 - **Hierarquia visual:** organização estratégica de cores, contrastes e pesos tipográficos para conduzir naturalmente a atenção do usuário aos dados e ações mais relevantes da tela sem esforço cognitivo.
 
-## 04/11/2026 — Transição do Design System para Modo Escuro (Dark Mode)
+## 04/11/2026 — Transição do Design System para Modo Escuro Grafite (Charcoal)
 
-**O que mudou:** a pedido do desenvolvedor devido ao desconforto visual e claridade excessiva do tema claro, todo o Design System foi migrado para Modo Escuro (`ctk.set_appearance_mode("dark")`) em `componentes.py`, com paleta semântica baseada em tons modernos de Slate e alto contraste para legibilidade, mantendo 100% dos testes verdes.
+**O que mudou:** a pedido do desenvolvedor para eliminar tonalidades azuladas e adotar uma estética neutra e sóbria, a paleta semântica do modo escuro foi refinada em `componentes.py` para tons de preto fosco e grafite profundo (`#121214` e `#1E1E22`), mantendo 100% dos testes automatizados verdes.
 
 **Decisões:**
-- Paleta semântica em tons Slate: fundo geral em `#0F172A` (Slate 900), cartões e painéis elevados em `#1E293B` (Slate 800) e bordas e divisórias sutis em `#334155` (Slate 700), proporcionando profundidade sem agredir a visão.
-- Tipografia de alto contraste: texto principal em `#F8FAFC` (Slate 50) e textos auxiliares em `#94A3B8` (Slate 400), assegurando leitura sem ofuscamento.
-- Cores de destaque semântico: botões primários em Royal Blue (`#3B82F6` / `#2563EB`), sucesso em verde esmeralda (`#16A34A`), botões secundários em slate com texto claro e avisos com fundo quente escuro (`#451A03`) e texto âmbar claro (`#FDE68A`).
-- Adaptação na Escala: faixas de confirmação adotaram `#064E3B` com texto `#A7F3D0` e cabeçalhos de plantão usam o fundo escuro integrado (`COR_FUNDO` ou `COR_AVISO_FUNDO` em feriados).
+- Paleta neutra grafite/charcoal: fundo geral em `#121214` (grafite profundo quase preto), cartões e painéis em `#1E1E22` (superfície fosca), divisórias e bordas em `#2E2E34`, e botões secundários em `#2A2A30` com hover em `#3A3A42`.
+- Tipografia neutra e nítida: texto principal em `#F4F4F5` e textos secundários em `#A1A1AA`, garantindo legibilidade perfeita sem tons azulados.
+- Realce de ações preservado: botões primários em azul vivo (`#3B82F6`), confirmação em verde (`#16A34A`), ações destrutivas em vermelho (`#DC2626`) e avisos em âmbar neutro escuro (`#3D2406`).
 
 **Conceitos aprendidos:**
-- **Design Tokens em Modo Escuro:** em vez de inverter cores matematicamente (o que gera contrastes duros e cansativos), projeta-se uma escala intencional com luminância controlada para superfícies e alta legibilidade para tipografia.
-- **Relação de Contraste (Contrast Ratio - WCAG):** garantia de que textos claros sobre superfícies escuras atendam a padrões confortáveis de contraste (> 4.5:1), prevenindo fadiga ocular em sessões prolongadas de uso.
+- **Saturação vs. Neutralidade Cromática:** paletas com saturação azulada (*slate/navy*) geram sensação de frieza, enquanto tons neutros de cinza grafite (*zinc/charcoal*) proporcionam uma estética minimalista e moderna similar a ferramentas de desenvolvimento (VS Code, terminal, interfaces profissionais).
+- **Consistência de Tokens de Interface:** ao centralizar cores em variáveis semânticas (`COR_FUNDO`, `COR_CARTAO`, `COR_BORDA`), a alteração de tema para toda a aplicação ocorre em um único ponto, sem tocar na lógica nem quebrar componentes.
+
 
 

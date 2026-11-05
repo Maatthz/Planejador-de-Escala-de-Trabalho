@@ -13,6 +13,7 @@ from src.escala.interface.componentes import (
     COR_FUNDO,
     COR_PRIMARIA,
     COR_PRIMARIA_HOVER,
+    COR_SECUNDARIA,
     COR_TEXTO,
     COR_TEXTO_SUAVE,
     FONTE_AJUDA,
@@ -91,13 +92,20 @@ class JanelaPrincipal(ctk.CTk):
         )
         lbl_versao.pack(side="left", padx=24)
 
-        # Sistema de Abas Navegáveis
+        # Sistema de Abas Navegáveis (com botões grandes e destacados)
         self.tabview = ctk.CTkTabview(
             self,
             fg_color="transparent",
             segmented_button_selected_color=COR_PRIMARIA,
             segmented_button_selected_hover_color=COR_PRIMARIA_HOVER,
+            segmented_button_unselected_color=COR_SECUNDARIA,
+            segmented_button_unselected_hover_color=COR_BORDA,
             text_color=COR_TEXTO,
+        )
+        self.tabview._segmented_button.configure(
+            font=("Segoe UI", 16, "bold"),
+            height=46,
+            corner_radius=8,
         )
         self.tabview.pack(fill="both", expand=True, padx=16, pady=10)
 

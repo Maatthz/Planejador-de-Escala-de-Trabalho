@@ -304,11 +304,11 @@ class TelaEscala(ctk.CTkFrame):
         lbl.pack(expand=True)
 
     def _criar_cartao_plantao(self, plantao: Plantao, idx_plantao: int) -> None:
-        """Cria o cartão com título do turno e a lista numerada de duplas com botões de troca."""
+        """Cria o cartão do turno com grade organizada de duplas e botões de troca alinhados."""
         cartao = CartaoFrame(self.scroll_plantoes)
         cartao.pack(fill="x", pady=6)
 
-        # Cabeçalho do plantão
+        # Cabeçalho do plantão com título e contador de pessoas
         topo = ctk.CTkFrame(cartao, fg_color="transparent")
         topo.pack(fill="x", padx=16, pady=(12, 6))
 
@@ -325,55 +325,147 @@ class TelaEscala(ctk.CTkFrame):
         )
         lbl_tit.pack(side="left")
 
-        # Lista de duplas
-        for num_dupla, dupla in enumerate(plantao.duplas, start=1):
-            linha_dupla = ctk.CTkFrame(cartao, fg_color=COR_FUNDO, corner_radius=6)
-            linha_dupla.pack(fill="x", padx=16, pady=4)
+        qtd_duplas = len(plantao.duplas)
+        lbl_resumo = ctk.CTkLabel(
+            topo,
+            text=f"{qtd_duplas} dupla{'s' if qtd_duplas > 1 else ''} • {qtd_duplas * 2} pessoas",
+            font=("Segoe UI", 12),
+            text_color=COR_TEXTO_SUAVE,
+        )
+        lbl_resumo.pack(side="right")
 
+        # Grade em 2 colunas para exibição equilibrada das duplas
+        frame_grid = ctk.CTkFrame(cartao, fg_color="transparent")
+        frame_grid.pack(fill="x", padx=12, pady=(2, 10))
+        frame_grid.grid_columnconfigure(0, weight=1, uniform="col_dupla")
+        frame_grid.grid_columnconfigure(1, weight=1, uniform="col_dupla")
+
+        for num_dupla, dupla in enumerate(plantao.duplas, start=1):
             p_a = self.dados.buscar_pessoa(dupla.pessoa_a)
             p_b = self.dados.buscar_pessoa(dupla.pessoa_b)
-            nome_a = f"{p_a.nome} ⭐" if p_a and p_a.experiente else (p_a.nome if p_a else f"ID {dupla.pessoa_a}")
-            nome_b = f"{p_b.nome} ⭐" if p_b and p_b.experiente else (p_b.nome if p_b else f"ID {dupla.pessoa_b}")
+            nome_a = p_a.nome if p_a else f"ID {dupla.pessoa_a}"
+            nome_b = p_b.nome if p_b else f"ID {dupla.pessoa_b}"
 
-            lbl_num = ctk.CTkLabel(
-                linha_dupla,
-                text=f"{num_dupla}.",
-                font=FONTE_SUBTITULO,
-                text_color=COR_TEXTO,
-                width=30,
+            card_dupla = ctk.CTkFrame(
+                frame_grid,
+                fg_color=COR_FUNDO,
+                border_color=COR_BORDA,
+                border_width=1,
+                corner_radius=8,
             )
-            lbl_num.pack(side="left", padx=(10, 4))
 
-            # Pessoa A
-            lbl_a = ctk.CTkLabel(linha_dupla, text=nome_a, font=FONTE_CORPO, text_color=COR_TEXTO)
-            lbl_a.pack(side="left", padx=6)
+            # Posicionamento na grade: 2 por linha; se for a única ou última ímpar, ocupa as 2 colunas
+            if len(plantao.duplas) == 1:
+                card_dupla.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=4, pady=4)
+            else:
+                linha_idx = (num_dupla - 1) // 2
+                col_idx = (num_dupla - 1) % 2
+                if num_dupla == len(plantao.duplas) and col_idx == 0:
+                    card_dupla.grid(row=linha_idx, column=0, columnspan=2, sticky="nsew", padx=4, pady=4)
+                else:
+                    card_dupla.grid(row=linha_idx, column=col_idx, sticky="nsew", padx=4, pady=4)
+
+            # Cabeçalho da dupla
+            topo_d = ctk.CTkFrame(card_dupla, fg_color="transparent")
+            topo_d.pack(fill="x", padx=10, pady=(6, 2))
+
+            lbl_tag = ctk.CTkLabel(
+                topo_d,
+                text=f"DUPLA {num_dupla}",
+                font=("Segoe UI", 11, "bold"),
+                text_color=COR_TEXTO_SUAVE,
+            )
+            lbl_tag.pack(side="left")
+
+            # Linha da Pessoa A
+            linha_a = ctk.CTkFrame(
+                card_dupla,
+                fg_color=COR_CARTAO,
+                corner_radius=6,
+                border_color=COR_BORDA,
+                border_width=1,
+            )
+            linha_a.pack(fill="x", padx=8, pady=3)
+
+            info_a = ctk.CTkFrame(linha_a, fg_color="transparent")
+            info_a.pack(side="left", fill="x", expand=True, padx=8, pady=4)
+
+            lbl_a = ctk.CTkLabel(
+                info_a,
+                text=f"👤 {nome_a}",
+                font=("Segoe UI", 13, "bold"),
+                text_color=COR_TEXTO,
+                anchor="w",
+            )
+            lbl_a.pack(side="left")
+
+            if p_a and p_a.experiente:
+                lbl_exp_a = ctk.CTkLabel(
+                    info_a,
+                    text="⭐ Experiente",
+                    font=("Segoe UI", 10, "bold"),
+                    text_color=COR_AVISO_TEXTO,
+                    fg_color=COR_AVISO_FUNDO,
+                    corner_radius=4,
+                    padx=6,
+                    pady=1,
+                )
+                lbl_exp_a.pack(side="left", padx=8)
 
             btn_trocar_a = BotaoGrande(
-                linha_dupla,
+                linha_a,
                 "Trocar",
                 comando=lambda ip=idx_plantao, sa=dupla.pessoa_a: self._abrir_dialogo_troca(ip, sa),
                 variante="secundaria",
-                height=28,
+                height=26,
+                width=65,
             )
-            btn_trocar_a.pack(side="left", padx=(0, 16))
+            btn_trocar_a.pack(side="right", padx=6, pady=3)
 
-            lbl_e = ctk.CTkLabel(linha_dupla, text="e", font=FONTE_AJUDA, text_color=COR_TEXTO_SUAVE)
-            lbl_e.pack(side="left", padx=4)
+            # Linha da Pessoa B
+            linha_b = ctk.CTkFrame(
+                card_dupla,
+                fg_color=COR_CARTAO,
+                corner_radius=6,
+                border_color=COR_BORDA,
+                border_width=1,
+            )
+            linha_b.pack(fill="x", padx=8, pady=(2, 6))
 
-            # Pessoa B
-            lbl_b = ctk.CTkLabel(linha_dupla, text=nome_b, font=FONTE_CORPO, text_color=COR_TEXTO)
-            lbl_b.pack(side="left", padx=6)
+            info_b = ctk.CTkFrame(linha_b, fg_color="transparent")
+            info_b.pack(side="left", fill="x", expand=True, padx=8, pady=4)
+
+            lbl_b = ctk.CTkLabel(
+                info_b,
+                text=f"👤 {nome_b}",
+                font=("Segoe UI", 13, "bold"),
+                text_color=COR_TEXTO,
+                anchor="w",
+            )
+            lbl_b.pack(side="left")
+
+            if p_b and p_b.experiente:
+                lbl_exp_b = ctk.CTkLabel(
+                    info_b,
+                    text="⭐ Experiente",
+                    font=("Segoe UI", 10, "bold"),
+                    text_color=COR_AVISO_TEXTO,
+                    fg_color=COR_AVISO_FUNDO,
+                    corner_radius=4,
+                    padx=6,
+                    pady=1,
+                )
+                lbl_exp_b.pack(side="left", padx=8)
 
             btn_trocar_b = BotaoGrande(
-                linha_dupla,
+                linha_b,
                 "Trocar",
                 comando=lambda ip=idx_plantao, sb=dupla.pessoa_b: self._abrir_dialogo_troca(ip, sb),
                 variante="secundaria",
-                height=28,
+                height=26,
+                width=65,
             )
-            btn_trocar_b.pack(side="left")
-
-        ctk.CTkLabel(cartao, text="", height=4).pack()
+            btn_trocar_b.pack(side="right", padx=6, pady=3)
 
     def _abrir_dialogo_troca(self, indice_plantao: int, id_sai: int) -> None:
         """Abre modal com lista de opções para substituir uma pessoa no plantão."""

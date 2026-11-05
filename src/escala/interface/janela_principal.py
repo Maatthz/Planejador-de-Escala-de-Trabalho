@@ -49,6 +49,9 @@ class JanelaPrincipal(ctk.CTk):
         else:
             self.dados, self.aviso_inicial = carregar()
 
+        # Rastreia abas que precisam atualizar sua visualização (Lazy Rendering)
+        self._abas_desatualizadas: set[str] = set()
+
         self._construir_interface()
 
         # Se houve recuperação de backup, alerta o usuário de forma amigável
@@ -96,6 +99,7 @@ class JanelaPrincipal(ctk.CTk):
         self.tabview = ctk.CTkTabview(
             self,
             fg_color="transparent",
+            command=self._ao_trocar_aba,
             segmented_button_selected_color=COR_PRIMARIA,
             segmented_button_selected_hover_color=COR_PRIMARIA_HOVER,
             segmented_button_unselected_color=COR_SECUNDARIA,
@@ -152,11 +156,33 @@ class JanelaPrincipal(ctk.CTk):
         """Abre a janela modal de configurações completas com textos de ajuda."""
         JanelaConfiguracoes(pai=self, dados=self.dados, ao_mudar=self.ao_mudar)
 
-    def ao_mudar(self) -> None:
-        """Salva o estado único e atualiza todas as visualizações (fluxo unidirecional)."""
-        salvar(self.dados)
-        self.tela_equipe.atualizar_tela()
-        if hasattr(self, "tela_folgas"):
+    def _ao_trocar_aba(self) -> None:
+        """Renderiza a aba recém-selecionada apenas se houver alterações pendentes (Lazy Rendering)."""
+        aba_ativa = self.tabview.get()
+        if aba_ativa == "👥 Equipe" and "equipe" in self._abas_desatualizadas:
+            self.tela_equipe.atualizar_tela()
+            self._abas_desatualizadas.discard("equipe")
+        elif aba_ativa == "📅 Folgas" and hasattr(self, "tela_folgas") and "folgas" in self._abas_desatualizadas:
             self.tela_folgas.atualizar_tela()
-        if hasattr(self, "tela_escala"):
+            self._abas_desatualizadas.discard("folgas")
+        elif aba_ativa == "📋 Escala" and hasattr(self, "tela_escala") and "escala" in self._abas_desatualizadas:
             self.tela_escala.atualizar_tela()
+            self._abas_desatualizadas.discard("escala")
+
+    def ao_mudar(self) -> None:
+        """Salva o estado e atualiza imediatamente a aba ativa (demais sob demanda)."""
+        salvar(self.dados)
+        self._abas_desatualizadas = {"equipe", "folgas", "escala"}
+        aba_ativa = self.tabview.get()
+
+        if aba_ativa == "👥 Equipe":
+            self.tela_equipe.atualizar_tela()
+            self._abas_desatualizadas.discard("equipe")
+        elif aba_ativa == "📅 Folgas" and hasattr(self, "tela_folgas"):
+            self.tela_folgas.atualizar_tela()
+            self._abas_desatualizadas.discard("folgas")
+        elif aba_ativa == "📋 Escala" and hasattr(self, "tela_escala"):
+            self.tela_escala.atualizar_tela()
+            self._abas_desatualizadas.discard("escala")
+        else:
+            self.tela_equipe.atualizar_tela()

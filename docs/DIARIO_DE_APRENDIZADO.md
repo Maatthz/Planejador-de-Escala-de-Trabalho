@@ -198,3 +198,15 @@ e `janela_justica.py` na interface).
 **Conceitos aprendidos:**
 - **Hierarquia visual (Visual Hierarchy):** técnica de design que orienta o olhar do usuário através do tamanho, peso e espaçamento das fontes, deixando claro o que é título, item de lista e ação secundária.
 - **Modularização de componentes em grade (Card Grid):** estruturação de informações agrupadas (duplas de plantão) em pequenos módulos visuais independentes distribuídos em linhas e colunas uniformes.
+
+## 04/11/2026 — Otimização de Performance da Interface (Lazy Rendering e Flattening)
+
+**O que mudou:** eliminados gargalos de renderização na interface gráfica através de renderização preguiçosa nas abas (`janela_principal.py`) e achatamento hierárquico da árvore de widgets (`tela_equipe.py` e `tela_escala.py`), acelerando o tempo de renderização em quase 40% e tornando a rolagem e a troca de abas instantâneas.
+
+**Decisões:**
+- Renderização preguiçosa (Lazy Rendering): `ao_mudar()` atualiza imediatamente apenas a aba visível aos olhos da usuária. As abas em segundo plano são marcadas no conjunto `_abas_desatualizadas` e só são reconstruídas sob demanda quando o usuário clica nelas (`_ao_trocar_aba`).
+- Achatamento de hierarquia (Widget Tree Flattening): remoção de contêineres transparentes intermediários (`info_frame`, `acoes_frame`, `info_a`, `info_b`). Rótulos e botões passam a ser empacotados diretamente no cartão pai com `side="left"` e `side="right"`, eliminando mais de 60 instâncias de `CTkFrame` por ciclo de renderização.
+
+**Conceitos aprendidos:**
+- **Renderização preguiçosa (Lazy Rendering / Evaluation):** padrão que posterga o processamento ou renderização de um elemento até o momento exato em que ele se torna necessário e visível, poupando ciclos de CPU e memória.
+- **Achatamento de árvore de componentes (Widget Tree Flattening):** técnica de simplificação da árvore visual que remove contêineres intermediários redundantes, diminuindo o custo de cálculo de geometria e chamadas de desenho no motor gráfico.

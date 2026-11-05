@@ -113,28 +113,25 @@ class TelaEquipe(ctk.CTkFrame):
         lbl.pack(expand=True)
 
     def _criar_cartao_pessoa(self, pessoa: Pessoa) -> None:
-        """Cria uma linha/cartão com as informações e ações da pessoa."""
+        """Cria uma linha/cartão compacta com as informações e ações da pessoa."""
         cartao = CartaoFrame(self.scroll_lista)
         cartao.pack(fill="x", pady=2, padx=4)
 
-        info_frame = ctk.CTkFrame(cartao, fg_color="transparent")
-        info_frame.pack(side="left", fill="both", expand=True, padx=14, pady=6)
-
-        # Nome com destaque proporcional
+        # Nome com destaque proporcional (alinhado diretamente à esquerda)
         cor_nome = COR_TEXTO if pessoa.ativo else COR_TEXTO_SUAVE
         lbl_nome = ctk.CTkLabel(
-            info_frame,
+            cartao,
             text=pessoa.nome,
             font=("Segoe UI", 14, "bold") if pessoa.ativo else ("Segoe UI", 14),
             text_color=cor_nome,
             anchor="w",
         )
-        lbl_nome.pack(side="left")
+        lbl_nome.pack(side="left", padx=(14, 0), pady=6)
 
         # Selos de status proporcionais
         if pessoa.experiente and pessoa.ativo:
             lbl_exp = ctk.CTkLabel(
-                info_frame,
+                cartao,
                 text="⭐ Experiente",
                 font=("Segoe UI", 11, "bold"),
                 text_color=COR_AVISO_TEXTO,
@@ -143,33 +140,21 @@ class TelaEquipe(ctk.CTkFrame):
                 padx=8,
                 pady=1,
             )
-            lbl_exp.pack(side="left", padx=10)
+            lbl_exp.pack(side="left", padx=10, pady=6)
 
         if not pessoa.ativo:
             lbl_inativo = ctk.CTkLabel(
-                info_frame,
+                cartao,
                 text="(Inativo)",
                 font=("Segoe UI", 12),
                 text_color=COR_TEXTO_SUAVE,
             )
-            lbl_inativo.pack(side="left", padx=10)
+            lbl_inativo.pack(side="left", padx=10, pady=6)
 
-        # Botões de ação com proporções elegantes
-        acoes_frame = ctk.CTkFrame(cartao, fg_color="transparent")
-        acoes_frame.pack(side="right", padx=14, pady=6)
-
-        btn_editar = BotaoGrande(
-            acoes_frame,
-            "Editar",
-            comando=lambda p=pessoa: self._abrir_dialogo_editar(p),
-            variante="secundaria",
-            height=30,
-        )
-        btn_editar.pack(side="left", padx=(0, 6))
-
+        # Botões de ação (alinhados diretamente à direita, sem frames intermediários)
         if pessoa.ativo:
             btn_status = BotaoGrande(
-                acoes_frame,
+                cartao,
                 "Desativar",
                 comando=lambda p=pessoa: self._alternar_status(p),
                 variante="secundaria",
@@ -177,13 +162,22 @@ class TelaEquipe(ctk.CTkFrame):
             )
         else:
             btn_status = BotaoGrande(
-                acoes_frame,
+                cartao,
                 "Reativar",
                 comando=lambda p=pessoa: self._alternar_status(p),
                 variante="secundaria",
                 height=30,
             )
-        btn_status.pack(side="left")
+        btn_status.pack(side="right", padx=(4, 14), pady=6)
+
+        btn_editar = BotaoGrande(
+            cartao,
+            "Editar",
+            comando=lambda p=pessoa: self._abrir_dialogo_editar(p),
+            variante="secundaria",
+            height=30,
+        )
+        btn_editar.pack(side="right", padx=4, pady=6)
 
     def _alternar_status(self, pessoa: Pessoa) -> None:
         """Ativa ou desativa a pessoa. Ao reativar, ajusta data_entrada para hoje."""

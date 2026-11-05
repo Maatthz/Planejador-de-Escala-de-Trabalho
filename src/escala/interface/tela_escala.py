@@ -377,7 +377,7 @@ class TelaEscala(ctk.CTkFrame):
             )
             lbl_tag.pack(side="left")
 
-            # Linha da Pessoa A
+            # Linha da Pessoa A (sem frames intermediários)
             linha_a = ctk.CTkFrame(
                 card_dupla,
                 fg_color=COR_CARTAO,
@@ -387,21 +387,18 @@ class TelaEscala(ctk.CTkFrame):
             )
             linha_a.pack(fill="x", padx=8, pady=3)
 
-            info_a = ctk.CTkFrame(linha_a, fg_color="transparent")
-            info_a.pack(side="left", fill="x", expand=True, padx=8, pady=4)
-
             lbl_a = ctk.CTkLabel(
-                info_a,
+                linha_a,
                 text=f"👤 {nome_a}",
                 font=("Segoe UI", 13, "bold"),
                 text_color=COR_TEXTO,
                 anchor="w",
             )
-            lbl_a.pack(side="left")
+            lbl_a.pack(side="left", padx=(8, 0), pady=4)
 
             if p_a and p_a.experiente:
                 lbl_exp_a = ctk.CTkLabel(
-                    info_a,
+                    linha_a,
                     text="⭐ Experiente",
                     font=("Segoe UI", 10, "bold"),
                     text_color=COR_AVISO_TEXTO,
@@ -410,7 +407,7 @@ class TelaEscala(ctk.CTkFrame):
                     padx=6,
                     pady=1,
                 )
-                lbl_exp_a.pack(side="left", padx=8)
+                lbl_exp_a.pack(side="left", padx=8, pady=4)
 
             btn_trocar_a = BotaoGrande(
                 linha_a,
@@ -422,7 +419,7 @@ class TelaEscala(ctk.CTkFrame):
             )
             btn_trocar_a.pack(side="right", padx=6, pady=3)
 
-            # Linha da Pessoa B
+            # Linha da Pessoa B (sem frames intermediários)
             linha_b = ctk.CTkFrame(
                 card_dupla,
                 fg_color=COR_CARTAO,
@@ -432,21 +429,18 @@ class TelaEscala(ctk.CTkFrame):
             )
             linha_b.pack(fill="x", padx=8, pady=(2, 6))
 
-            info_b = ctk.CTkFrame(linha_b, fg_color="transparent")
-            info_b.pack(side="left", fill="x", expand=True, padx=8, pady=4)
-
             lbl_b = ctk.CTkLabel(
-                info_b,
+                linha_b,
                 text=f"👤 {nome_b}",
                 font=("Segoe UI", 13, "bold"),
                 text_color=COR_TEXTO,
                 anchor="w",
             )
-            lbl_b.pack(side="left")
+            lbl_b.pack(side="left", padx=(8, 0), pady=4)
 
             if p_b and p_b.experiente:
                 lbl_exp_b = ctk.CTkLabel(
-                    info_b,
+                    linha_b,
                     text="⭐ Experiente",
                     font=("Segoe UI", 10, "bold"),
                     text_color=COR_AVISO_TEXTO,
@@ -455,7 +449,7 @@ class TelaEscala(ctk.CTkFrame):
                     padx=6,
                     pady=1,
                 )
-                lbl_exp_b.pack(side="left", padx=8)
+                lbl_exp_b.pack(side="left", padx=8, pady=4)
 
             btn_trocar_b = BotaoGrande(
                 linha_b,

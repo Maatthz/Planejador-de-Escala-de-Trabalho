@@ -314,3 +314,20 @@ em uma pessoa na aba Folgas), o `AGENTS.md` recebeu as seções **10.4 (Regras d
 **Conceitos aprendidos:**
 - **Empacotamento (*Freezing* com PyInstaller):** transforma o interpretador Python, o bytecode dos módulos `.py`, as DLLs nativas (como Tcl/Tk) e os arquivos de dados das bibliotecas em um único executável `.exe` autossuficiente que descompacta seus recursos em uma pasta temporária (`_MEIPASS`) ao abrir.
 - **Rotação de Logs (`RotatingFileHandler`):** evita que o arquivo de log cresça infinitamente no computador do usuário; ao atingir 1 MB, ele é renomeado para `.log.1` (mantendo até 3 históricos) e um novo `registro.log` é iniciado.
+
+## 06/11/2026 — Fase 9: Atualizador Automático (`atualizador.py`) com SHA-256 e Testes Offline
+
+**O que mudou:** implementado o módulo [`src/escala/atualizador.py`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/src/escala/atualizador.py), integrado à inicialização da [`JanelaPrincipal`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/src/escala/interface/janela_principal.py) e validado por 10 testes em [`tests/test_atualizador.py`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/tests/test_atualizador.py).
+
+**Decisões:**
+- **Comparação semântica numérica (`comparar_versoes`):** converte `"v1.10.0"` em `(1, 10, 0)` antes de comparar, evitando o erro clássico de comparação alfabética onde `"1.10.0" < "1.9.9"` porque `'1' < '9'`.
+- **Falha silenciosa na consulta (`buscar_atualizacao`):** se o usuário estiver sem internet, se o repositório ainda não estiver configurado ou se o GitHub estiver fora do ar, retorna `None` sem incomodar o usuário com janelas de erro.
+- **Segurança por hash criptográfico (`calcular_sha256` / `baixar_e_verificar`):** exige links `https://`, calcula o SHA-256 do `.exe` baixado em blocos de 64 KB e compara com o arquivo `.sha256` da Release. Se divergir, apaga o arquivo imediatamente e levanta `ErroAtualizacao`.
+- **Auto-substituição no Windows (`instalar_e_reiniciar`):** como o Windows bloqueia sobrescrever um `.exe` que está em execução, o programa gera um script temporário `atualizar_escala.bat` que aguarda 2 segundos após o encerramento (`sys.exit(0)`), move o novo `.exe` para o lugar do antigo, reabre o programa e apaga o próprio `.bat` (`del "%~f0"`).
+- **Thread em segundo plano + `after(0, ...)`:** a consulta HTTP roda em uma `threading.Thread(..., daemon=True)` para não travar a abertura da janela, e devolve o aviso para a thread principal do Tkinter via `self.after(0, ...)`.
+
+**Conceitos aprendidos:**
+- **Versionamento Semântico (*SemVer*):** formato `MAIOR.MENOR.CORREÇÃO` comparado parte a parte como inteiros.
+- **Hash Criptográfico (SHA-256):** impressão digital única de 256 bits (64 caracteres hexadecimais) de um arquivo; qualquer byte corrompido ou adulterado muda completamente o hash.
+- **Threads Daemon e Thread Safety em GUI:** operações de rede nunca devem rodar na thread principal da interface (para não congelar a janela), e threads secundárias nunca devem criar widgets diretamente — usam `janela.after(0, callback)` para enfileirar a ação na thread principal.
+- **Mocking / Monkeypatch em Testes:** substituição temporária de `requests.get` e `subprocess.Popen` durante os testes para simular internet, erros de rede e permissões de disco de forma instantânea e determinística.

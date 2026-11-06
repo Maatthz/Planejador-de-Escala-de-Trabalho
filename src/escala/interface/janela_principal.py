@@ -4,9 +4,19 @@ Coordena o ciclo de vida da interface gráfica, abas de navegação,
 cabeçalho, rodapé e persistência unidirecional através de armazenamento.py.
 """
 
+from pathlib import Path
+import tempfile
 import customtkinter as ctk
 
 from src.escala.armazenamento import carregar, salvar
+from src.escala.atualizador import (
+    ErroAtualizacao,
+    InfoAtualizacao,
+    baixar_e_verificar,
+    instalar_e_reiniciar,
+    programa_esta_empacotado,
+    verificar_em_segundo_plano,
+)
 from src.escala.interface.componentes import (
     COR_BORDA,
     COR_CARTAO,
@@ -23,7 +33,9 @@ from src.escala.interface.componentes import (
     AbasRapidas,
     BotaoGrande,
     CartaoFrame,
+    mostrar_erro,
     mostrar_info,
+    perguntar_sim_nao,
 )
 from src.escala.interface.janela_configuracoes import JanelaConfiguracoes
 from src.escala.interface.tela_equipe import TelaEquipe
@@ -59,6 +71,12 @@ class JanelaPrincipal(ctk.CTk):
         # Se houve recuperação de backup, alerta o usuário de forma amigável
         if self.aviso_inicial:
             self.after(200, lambda: mostrar_info(self, self.aviso_inicial))
+
+        # Se estiver rodando empacotado (.exe), verifica atualizações em segundo plano
+        if programa_esta_empacotado():
+            verificar_em_segundo_plano(
+                lambda info: self.after(0, lambda: self._oferecer_atualizacao(info))
+            )
 
     def _construir_interface(self) -> None:
         """Monta o cabeçalho, divisórias sutis, sistema de abas e rodapé."""
@@ -192,6 +210,25 @@ class JanelaPrincipal(ctk.CTk):
     def _abrir_configuracoes(self) -> None:
         """Abre a janela modal de configurações completas com textos de ajuda."""
         JanelaConfiguracoes(pai=self, dados=self.dados, ao_mudar=self.ao_mudar)
+
+    def _oferecer_atualizacao(self, info: InfoAtualizacao) -> None:
+        """Pergunta ao usuário se deseja atualizar e aplica a nova versão."""
+        if not self.winfo_exists():
+            return
+        deseja = perguntar_sim_nao(
+            self,
+            "Atualização disponível",
+            f"Nova versão {info.versao} disponível! Deseja atualizar agora?",
+        )
+        if not deseja:
+            return
+        pasta_temp = Path(tempfile.mkdtemp(prefix="atualizacao_escala_"))
+        try:
+            novo_exe = baixar_e_verificar(info, pasta_temp)
+            instalar_e_reiniciar(novo_exe)
+        except ErroAtualizacao as erro:
+            if "Mova o programa" in str(erro):
+                mostrar_erro(self, str(erro))
 
     def _ao_trocar_aba(self) -> None:
         """Renderiza a aba recém-selecionada apenas se houver alterações pendentes (Lazy Rendering)."""

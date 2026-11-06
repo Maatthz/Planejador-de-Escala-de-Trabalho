@@ -877,7 +877,7 @@ pyinstaller --onefile --windowed --name PlanejadorEscala --collect-data customtk
 | 7 ✅ | ⚙️ Configurações com ajuda | Concluída | parametrização, validação de entrada |
 | 7.1 ✅ | Refatoração de Performance e Polimento Visual (UI/UX) | Concluída | Árvore de widgets (Widget Tree), reuso de objetos (*in-place update*), *layout thrashing*, hierarquia visual |
 | 8 ✅ | `iniciar.py` + `.exe` manual | Concluída | empacotamento |
-| 9 | `atualizador.py` + testes | Testes com monkeypatch verdes; atualização real testada com 2 versões | HTTP, API REST, threads, hash, versionamento semântico |
+| 9 ✅ | `atualizador.py` + testes | Concluída | HTTP, API REST, threads, hash, versionamento semântico |
 | 10 | GitHub Actions | Tag gera Release com `.exe` e `.sha256` | CI/CD |
 | 11 | `MANUAL_DO_USUARIO.md` + polimento | Usuário leigo consegue usar só com o manual | documentação, UX |
 
@@ -936,6 +936,6 @@ pyinstaller --onefile --windowed --name PlanejadorEscala --collect-data customtk
 
 | Item | Situação |
 |---|---|
-| Fase atual | **Fase 8 concluída** → próxima: **Fase 9 (`atualizador.py` + testes)** |
+| Fase atual | **Fase 9 concluída** → próxima: **Fase 10 (GitHub Actions)** |
 | Repositório GitHub | Ainda não criado (`REPOSITORIO_GITHUB` vazio) |
-| Último commit relevante | Fase 8: lancador iniciar.py, logging global e empacotamento .exe |
+| Último commit relevante | Fase 9: atualizador automatico com SHA-256 e testes offline |

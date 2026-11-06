@@ -301,3 +301,16 @@ em uma pessoa na aba Folgas), o `AGENTS.md` recebeu as seções **10.4 (Regras d
 - **Z-Order Stacking (`tkraise`) vs. Unmapping (`grid_forget`):** desmapear e remapear centenas de janelas filhas (`HWND`s) no Windows força o gerenciador de geometria a recalcular posições de cima para baixo; manter os containers empilhados e apenas alterar a ordem Z (`tkraise`) troca a visualização sem recalcular layout.
 - **Isolamento de Propagação de Geometria (`pack_propagate(False)` / `grid_propagate(False)`):** impede que alterações internas em uma aba façam o Tkinter recalcular o tamanho da janela inteira e das abas vizinhas.
 - **Peso de Widgets Compostos vs. Nativos:** cada `CTkLabel` cria 3 `HWND`s no Windows (`Frame` + `Canvas` + `Label`); em listas grandes com fundo sólido, usar um `tk.Label` nativo reduz em 3× o número de janelas que o sistema operacional precisa pintar.
+
+## 06/11/2026 — Fase 8: Lançador `iniciar.py`, Logging Global e Empacotamento `.exe`
+
+**O que mudou:** criado o lançador [`iniciar.py`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/iniciar.py) na raiz do projeto, configurado o sistema de registro de logs rotativo (`registro.log`) e captura global de exceções de callbacks em [`src/escala/main.py`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/src/escala/main.py), adicionado teste automatizado em [`tests/test_versao.py`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/tests/test_versao.py) e gerado o executável único `dist/PlanejadorEscala.exe` (~11,1 MB) com PyInstaller.
+
+**Decisões:**
+- **`iniciar.py` na raiz:** como os módulos internos usam imports absolutos (`from src.escala...`), o script de entrada do PyInstaller precisa ficar na pasta pai de `src/` para que o pacote `src.escala` seja resolvido sem conflito de caminhos.
+- **Captura de erros em modo `--windowed` (`report_callback_exception`):** como o `.exe` roda sem janela de terminal preta (`--windowed`), erros inesperados em cliques de botão não apareceriam em lugar nenhum. Redirecionamos `app.report_callback_exception` para gravar o *traceback* completo em `%APPDATA%/PlanejadorEscala/registro.log` (`RotatingFileHandler` de 1 MB com até 3 arquivos) e exibir uma mensagem amigável ao usuário.
+- **`--collect-data customtkinter`:** inclui os arquivos de temas JSON e fontes do CustomTkinter dentro do `.exe`.
+
+**Conceitos aprendidos:**
+- **Empacotamento (*Freezing* com PyInstaller):** transforma o interpretador Python, o bytecode dos módulos `.py`, as DLLs nativas (como Tcl/Tk) e os arquivos de dados das bibliotecas em um único executável `.exe` autossuficiente que descompacta seus recursos em uma pasta temporária (`_MEIPASS`) ao abrir.
+- **Rotação de Logs (`RotatingFileHandler`):** evita que o arquivo de log cresça infinitamente no computador do usuário; ao atingir 1 MB, ele é renomeado para `.log.1` (mantendo até 3 históricos) e um novo `registro.log` é iniciado.

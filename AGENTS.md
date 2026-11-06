@@ -876,7 +876,7 @@ pyinstaller --onefile --windowed --name PlanejadorEscala --collect-data customtk
 | 6 ✅ | Aba Escala + feriado + quadro de justiça + histórico + copiar | Concluída | integração lógica ↔ interface, janelas modais, área de transferência |
 | 7 ✅ | ⚙️ Configurações com ajuda | Concluída | parametrização, validação de entrada |
 | 7.1 ✅ | Refatoração de Performance e Polimento Visual (UI/UX) | Concluída | Árvore de widgets (Widget Tree), reuso de objetos (*in-place update*), *layout thrashing*, hierarquia visual |
-| 8 | `iniciar.py` + `.exe` manual | `.exe` abre num PC sem Python | empacotamento |
+| 8 ✅ | `iniciar.py` + `.exe` manual | Concluída | empacotamento |
 | 9 | `atualizador.py` + testes | Testes com monkeypatch verdes; atualização real testada com 2 versões | HTTP, API REST, threads, hash, versionamento semântico |
 | 10 | GitHub Actions | Tag gera Release com `.exe` e `.sha256` | CI/CD |
 | 11 | `MANUAL_DO_USUARIO.md` + polimento | Usuário leigo consegue usar só com o manual | documentação, UX |
@@ -936,6 +936,6 @@ pyinstaller --onefile --windowed --name PlanejadorEscala --collect-data customtk
 
 | Item | Situação |
 |---|---|
-| Fase atual | **Fase 7.1 concluída** → próxima: **Fase 8 (`iniciar.py` + `.exe` manual)** |
+| Fase atual | **Fase 8 concluída** → próxima: **Fase 9 (`atualizador.py` + testes)** |
 | Repositório GitHub | Ainda não criado (`REPOSITORIO_GITHUB` vazio) |
-| Último commit relevante | Fase 7.1: refatoracao de performance e polimento visual UI/UX com testes |
+| Último commit relevante | Fase 8: lancador iniciar.py, logging global e empacotamento .exe |

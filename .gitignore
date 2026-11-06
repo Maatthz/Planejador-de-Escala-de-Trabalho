@@ -13,6 +13,7 @@ dist/
 # Cache do pytest
 .pytest_cache/
 
-# Configurações de editores
+# Configurações de editores e instruções locais de IA
 .vscode/
 .idea/
+AGENTS.md

@@ -331,3 +331,16 @@ em uma pessoa na aba Folgas), o `AGENTS.md` recebeu as seções **10.4 (Regras d
 - **Hash Criptográfico (SHA-256):** impressão digital única de 256 bits (64 caracteres hexadecimais) de um arquivo; qualquer byte corrompido ou adulterado muda completamente o hash.
 - **Threads Daemon e Thread Safety em GUI:** operações de rede nunca devem rodar na thread principal da interface (para não congelar a janela), e threads secundárias nunca devem criar widgets diretamente — usam `janela.after(0, callback)` para enfileirar a ação na thread principal.
 - **Mocking / Monkeypatch em Testes:** substituição temporária de `requests.get` e `subprocess.Popen` durante os testes para simular internet, erros de rede e permissões de disco de forma instantânea e determinística.
+
+## 06/11/2026 — Fase 10: GitHub Actions (`testes.yml` e `release.yml`) e Configuração do Repositório
+
+**O que mudou:** configurado `REPOSITORIO_GITHUB = "Maatthz/Planejador-de-Escala-de-Trabalho"` em [`src/escala/versao.py`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/src/escala/versao.py), adicionado `AGENTS.md` ao [`.gitignore`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/.gitignore) (removido do rastreamento remoto com `git rm --cached` mas preservado no disco local), conectado o controle remoto `origin` e criados os workflows [`.github/workflows/testes.yml`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/.github/workflows/testes.yml) e [`.github/workflows/release.yml`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/.github/workflows/release.yml).
+
+**Decisões:**
+- **Integração Contínua (`testes.yml`):** a cada `push` ou `pull_request` na branch `main`, uma máquina Windows na nuvem do GitHub instala o Python 3.12, as dependências e executa `pytest`.
+- **Entrega Contínua (`release.yml`):** disparado automaticamente apenas quando uma *tag* começando com `v` (ex.: `v0.1.0`) é enviada ao GitHub. Roda os testes, valida que a tag coincide exatamente com `v` + `VERSAO` de `versao.py` (evitando publicar versão errada por engano), empacota o `PlanejadorEscala.exe`, gera o `PlanejadorEscala.exe.sha256` em minúsculas e cria a GitHub Release anexando os dois arquivos.
+- **`git rm --cached AGENTS.md`:** remove o arquivo do repositório Git (para não aparecer no GitHub) sem apagá-lo da pasta local do projeto.
+
+**Conceitos aprendidos:**
+- **CI/CD (Integração Contínua e Entrega Contínua):** automação em servidores de nuvem que testa cada alteração (*CI*) e compila/publica o executável final pronto para o usuário quando uma versão é fechada (*CD*).
+- **Git Index vs. Working Tree (`git rm --cached`):** diferença entre apagar um arquivo do disco (`rm`) e apenas parar de rastreá-lo no histórico do Git mantendo a cópia local intacta.

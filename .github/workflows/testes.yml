@@ -1,0 +1,30 @@
+name: Testes Automatizados
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  testar:
+    name: Rodar pytest no Windows
+    runs-on: windows-latest
+
+    steps:
+      - name: Baixar código do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Instalar dependências
+        run: pip install -r requirements-dev.txt
+
+      - name: Executar suíte de testes (pytest)
+        env:
+          PYTHONUTF8: "1"
+        run: pytest

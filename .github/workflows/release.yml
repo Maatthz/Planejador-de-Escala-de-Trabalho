@@ -1,0 +1,62 @@
+name: Publicar Release (.exe)
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  publicar:
+    name: Testar, gerar .exe e publicar Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Baixar código do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Instalar dependências
+        run: pip install -r requirements-dev.txt
+
+      - name: Executar suíte de testes (pytest)
+        env:
+          PYTHONUTF8: "1"
+        run: pytest
+
+      - name: Conferir se a tag corresponde à VERSAO em versao.py
+        shell: pwsh
+        run: |
+          $versaoEsperada = python -c "from src.escala.versao import VERSAO; print(f'v{VERSAO}')"
+          $tagAtual = "${{ github.ref_name }}"
+          if ($tagAtual -ne $versaoEsperada) {
+            Write-Error "A tag '$tagAtual' é diferente da versão em src/escala/versao.py ('$versaoEsperada')."
+            exit 1
+          }
+
+      - name: Empacotar executável único com PyInstaller
+        shell: pwsh
+        run: |
+          pyinstaller --noconfirm --onefile --windowed --name PlanejadorEscala --collect-data customtkinter iniciar.py
+
+      - name: Gerar hash SHA-256 do executável
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash -Path "dist/PlanejadorEscala.exe" -Algorithm SHA256).Hash.ToLower()
+          [System.IO.File]::WriteAllText("$PWD/dist/PlanejadorEscala.exe.sha256", "$hash`n")
+          Write-Host "SHA-256 gerado: $hash"
+
+      - name: Publicar GitHub Release com .exe e .sha256
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/PlanejadorEscala.exe
+            dist/PlanejadorEscala.exe.sha256

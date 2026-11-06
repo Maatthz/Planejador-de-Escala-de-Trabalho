@@ -7,4 +7,4 @@ Formato MAIOR.MENOR.CORREÇÃO (versionamento semântico):
 """
 
 VERSAO: str = "0.1.0"
-REPOSITORIO_GITHUB: str = ""
+REPOSITORIO_GITHUB: str = "Maatthz/Planejador-de-Escala-de-Trabalho"

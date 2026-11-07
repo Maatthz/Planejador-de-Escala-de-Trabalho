@@ -6,5 +6,5 @@ Formato MAIOR.MENOR.CORREÇÃO (versionamento semântico):
 - CORREÇÃO: correções de erros.
 """
 
-VERSAO: str = "0.1.0"
+VERSAO: str = "0.1.1"
 REPOSITORIO_GITHUB: str = "Maatthz/Planejador-de-Escala-de-Trabalho"

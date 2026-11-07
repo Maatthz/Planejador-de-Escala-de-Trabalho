@@ -344,3 +344,15 @@ em uma pessoa na aba Folgas), o `AGENTS.md` recebeu as seções **10.4 (Regras d
 **Conceitos aprendidos:**
 - **CI/CD (Integração Contínua e Entrega Contínua):** automação em servidores de nuvem que testa cada alteração (*CI*) e compila/publica o executável final pronto para o usuário quando uma versão é fechada (*CD*).
 - **Git Index vs. Working Tree (`git rm --cached`):** diferença entre apagar um arquivo do disco (`rm`) e apenas parar de rastreá-lo no histórico do Git mantendo a cópia local intacta.
+
+## 06/11/2026 — Fase 11: Manual do Usuário (`MANUAL_DO_USUARIO.md`), Guia do Desenvolvedor (`README.md`) e Fechamento
+
+**O que mudou:** elaborado o guia completo para o usuário final leigo em [`docs/MANUAL_DO_USUARIO.md`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/docs/MANUAL_DO_USUARIO.md) e atualizado o [`README.md`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/README.md) na raiz com instruções de execução, testes, empacotamento `.exe`, publicação de Releases via tags e mapa da arquitetura.
+
+**Decisões:**
+- **Linguagem orientada à tarefa no Manual do Usuário:** em vez de descrever código ou estruturas de dados, o manual acompanha o fluxo mental semanal de quem monta a escala (1. Abrir o `.exe` e passar pelo aviso do Windows SmartScreen → 2. Cadastrar equipe e estrelas `★` → 3. Marcar folgas e férias → 4. Gerar rascunho, fazer trocas clicando no nome, confirmar e colar no WhatsApp).
+- **Separação entre documentação de usuário e de desenvolvedor:** o `README.md` atende o desenvolvedor no GitHub (comandos PowerShell, PyInstaller e fluxo de tags do GitHub Actions), enquanto `docs/MANUAL_DO_USUARIO.md` fala diretamente com a pessoa leiga que utiliza o programa.
+
+**Conceitos aprendidos:**
+- **Documentação Orientada ao Usuário vs. Documentação Técnica:** adaptar vocabulário, exemplos e nível de abstração ao público-alvo faz parte da Engenharia de Software e da Experiência do Usuário (*UX Writing*).
+- **Fluxo de Release Baseado em Tags (*Tag-based Release Workflow*):** ciclo completo de manutenção de software desktop em produção (alterar `VERSAO` → commit → `git tag vX.Y.Z` → build e distribuição automática).

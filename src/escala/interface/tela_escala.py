@@ -758,7 +758,11 @@ class TelaEscala(ctk.CTkFrame):
 
     def _abrir_quadro_justica(self) -> None:
         """Abre o diálogo do Quadro de Justiça."""
-        JanelaJustica(pai=self.winfo_toplevel(), dados=self.dados)
+        JanelaJustica(
+            pai=self.winfo_toplevel(),
+            dados=self.dados,
+            ao_mudar=self.ao_mudar,
+        )
 
     def _abrir_historico(self) -> None:
         """Abre o diálogo do Histórico de escalas anteriores."""

@@ -87,6 +87,13 @@ def dados_para_dict(dados: DadosDoPrograma) -> dict:
                 "ativo": p.ativo,
                 "data_entrada": p.data_entrada.isoformat(),
                 "indisponibilidades": sorted(d.isoformat() for d in p.indisponibilidades),
+                "ajuste_plantoes": p.ajuste_plantoes,
+                "ajuste_feriados": p.ajuste_feriados,
+                "ultimo_plantao_manual": (
+                    p.ultimo_plantao_manual.isoformat()
+                    if p.ultimo_plantao_manual is not None
+                    else None
+                ),
             }
             for p in dados.pessoas
         ],
@@ -157,6 +164,13 @@ def dados_de_dict(bruto: dict) -> DadosDoPrograma:
             indisponibilidades={
                 date.fromisoformat(d) for d in p.get("indisponibilidades", [])
             },
+            ajuste_plantoes=int(p.get("ajuste_plantoes", 0)),
+            ajuste_feriados=int(p.get("ajuste_feriados", 0)),
+            ultimo_plantao_manual=(
+                date.fromisoformat(p["ultimo_plantao_manual"])
+                if p.get("ultimo_plantao_manual")
+                else None
+            ),
         )
         for p in valido.get("pessoas", [])
     ]

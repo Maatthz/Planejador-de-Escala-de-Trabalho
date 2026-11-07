@@ -95,6 +95,7 @@ Antes de gerar a escala da semana, marque quem pediu dispensa ou está de féria
 Na barra inferior da aba **`📋 Escala`**, há dois botões de consulta:
 
 - **`📊 Quadro de justiça`:** mostra a fila completa da equipe em ordem de prioridade (quem aparece no topo é o próximo a ser escalado), exibindo quantos plantões cada pessoa fez, quantos feriados trabalhou e a data do último plantão.
+  - **Já tinha uma escala rodando antes de usar o programa?** Clique em **`📊 Quadro de justiça`** → **`✏️ Editar manualmente`**, digite quantos plantões, feriados e a data do último plantão de cada pessoa e clique em **`💾 Salvar alterações`**. A partir daí, as novas escalas confirmadas serão somadas automaticamente!
 - **`📜 Escalas anteriores`:** lista todas as escalas já confirmadas.
   - **Precisou trocar alguém de última hora depois que a escala já estava confirmada?** Clique em **`📜 Escalas anteriores`** → **`Ver / Editar`** na escala desejada, clique no nome de quem saiu e escolha quem entrou no lugar. O programa **recalcula a justiça sozinho** na mesma hora!
 

@@ -125,11 +125,15 @@ def test_janela_feriado_adiciona_feriado(
 
 
 def test_janela_justica_exibe_integrantes(
-    app_janela_escala: JanelaPrincipal, dados_padrao: DadosDoPrograma
+    app_janela_escala: JanelaPrincipal, dados_padrao: DadosDoPrograma, pasta_temporaria: Path
 ) -> None:
-    """JanelaJustica deve abrir e exibir a fila com os 28 integrantes."""
+    """JanelaJustica deve abrir, exibir a fila e permitir edição manual dos contadores."""
     app_janela_escala.dados = dados_padrao
-    janela_just = JanelaJustica(pai=app_janela_escala, dados=dados_padrao)
+    janela_just = JanelaJustica(
+        pai=app_janela_escala,
+        dados=dados_padrao,
+        ao_mudar=app_janela_escala.ao_mudar,
+    )
     app_janela_escala.update_idletasks()
 
     filhos = [
@@ -137,6 +141,26 @@ def test_janela_justica_exibe_integrantes(
         if hasattr(f, "winfo_children")
     ]
     assert len(filhos) > 0
+
+    # Ativa modo de edição manual e altera a pessoa de ID 1
+    janela_just._ativar_modo_edicao()
+    ent_p, ent_f, ent_u = janela_just._campos_edicao[1]
+    ent_p.delete(0, "end")
+    ent_p.insert(0, "6")
+    ent_f.delete(0, "end")
+    ent_f.insert(0, "2")
+    ent_u.delete(0, "end")
+    ent_u.insert(0, "31/10/2026")
+
+    janela_just._salvar_edicao()
+    assert janela_just._modo_edicao is False
+
+    p1 = dados_padrao.buscar_pessoa(1)
+    assert p1 is not None
+    assert p1.ajuste_plantoes == 6
+    assert p1.ajuste_feriados == 2
+    assert p1.ultimo_plantao_manual == date(2026, 10, 31)
+
     janela_just.destroy()
 
 

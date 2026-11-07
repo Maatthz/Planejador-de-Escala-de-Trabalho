@@ -371,3 +371,19 @@ em uma pessoa na aba Folgas), o `AGENTS.md` recebeu as seções **10.4 (Regras d
 **Conceitos aprendidos:**
 - **Herança de Variáveis de Ambiente em Processos Filhos (*Environment Inheritance*):** todo processo criado com `subprocess.Popen` copia as variáveis de ambiente do processo pai, a menos que um dicionário `env` explícito seja fornecido.
 - **Bootloader em Dois Processos do PyInstaller 6 (`_PYI_APPLICATION_HOME_DIR` e `PYINSTALLER_RESET_ENVIRONMENT`):** arquitetura interna do modo `--onefile`, onde o processo pai descompacta a biblioteca Python em `%TEMP%\_MEIxxxxxx`, sinaliza o caminho via `_PYI_APPLICATION_HOME_DIR` ao processo filho e apaga a pasta assim que o filho termina; para um executável PyInstaller iniciar outro executável PyInstaller independente, é obrigatório ativar `PYINSTALLER_RESET_ENVIRONMENT=1` e limpar as variáveis `_PYI_*`.
+
+## 07/11/2026 — Preenchimento e Ajuste Manual do Quadro de Justiça (`v0.1.4`)
+
+**O que mudou:**
+1. Adicionados os campos `ajuste_plantoes: int = 0`, `ajuste_feriados: int = 0` e `ultimo_plantao_manual: date | None = None` em `Pessoa` ([`src/escala/modelos.py`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/src/escala/modelos.py)) com serialização e desserialização retrocompatível em [`src/escala/armazenamento.py`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/src/escala/armazenamento.py).
+2. Criada a função `ajustar_contadores_pessoa` e atualizados `calcular_contadores`, `registrar_plantao` e `quadro_de_justica` em [`src/escala/historico.py`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/src/escala/historico.py) para partir do saldo manual e somar automaticamente as novas escalas confirmadas.
+3. Adicionado o modo de edição em lote (**`✏️ Editar manualmente`** → **`💾 Salvar alterações`**) em [`src/escala/interface/janela_justica.py`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/src/escala/interface/janela_justica.py) e repassado `ao_mudar` em [`src/escala/interface/tela_escala.py`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/src/escala/interface/tela_escala.py).
+4. Adicionados testes automatizados em [`tests/test_historico.py`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/tests/test_historico.py) e [`tests/test_interface_escala.py`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/tests/test_interface_escala.py).
+
+**Decisões:**
+- **Modelagem por delta/ajuste (`ajuste_plantoes = plantoes_feitos - plantoes_confirmados`):** em vez de perder o vínculo com as escalas confirmadas, quando o usuário digita que alguém tem `5` plantões na tabela, o programa calcula a diferença em relação aos plantões já confirmados no histórico e guarda em `ajuste_plantoes`. Assim, a tabela reflete exatamente o valor `5` digitado agora, e quando uma nova escala for confirmada amanhã, o total sobe automaticamente para `6` sem quebrar a fonte única de verdade.
+- **Edição em tabela única (*Inline Batch Editing*):** em vez de obrigar o usuário a abrir 28 janelinhas separadas ao implantar o sistema numa equipe que já está em andamento, o botão **`✏️ Editar manualmente`** transforma as células da própria tabela em campos de digitação para preencher toda a equipe de uma só vez.
+
+**Conceitos aprendidos:**
+- **Migração de Sistema Legado / Carga Inicial (*Data Seeding / Onboarding*):** ao substituir um processo manual (planilha/papel) por um software, é essencial permitir importar ou digitar o estado acumulado até aquele momento para não zerar o histórico da equipe.
+- **Persistência Retrocompatível (*Backward-Compatible Serialization*):** uso de `.get("campo", valor_padrao)` ao ler JSON para que arquivos `dados.json` salvos em versões anteriores continuem abrindo sem erro após adicionar novos atributos ao modelo.

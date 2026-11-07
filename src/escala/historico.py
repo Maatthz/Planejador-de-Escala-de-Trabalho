@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 from src.escala.datas import chave_da_semana, inicio_da_semana
-from src.escala.modelos import Configuracao, DadosDoPrograma, Pessoa, Plantao
+from src.escala.modelos import Configuracao, DadosDoPrograma, ErroEscala, Pessoa, Plantao
 
 
 @dataclass
@@ -48,7 +48,9 @@ def registrar_plantao(contadores: Contadores, plantao: Plantao) -> None:
         if plantao.eh_feriado:
             contadores.feriados[id_pessoa] = contadores.feriados.get(id_pessoa, 0) + 1
 
-        contadores.ultimo_plantao[id_pessoa] = plantao.data
+        atual_ult = contadores.ultimo_plantao.get(id_pessoa)
+        if atual_ult is None or plantao.data >= atual_ult:
+            contadores.ultimo_plantao[id_pessoa] = plantao.data
 
         chave_turno = (id_pessoa, plantao.data.weekday(), plantao.periodo)
         contadores.vezes_no_turno[chave_turno] = (
@@ -109,13 +111,20 @@ def aplicar_piso_semanal(
 
 def calcular_contadores(dados: DadosDoPrograma) -> Contadores:
     """Reprocessa as escalas confirmadas em ordem e aplica o piso de ausências (seção 8.3)."""
+    ultimo_inicial: dict[int, date] = {}
+    semanas_iniciais: defaultdict[int, set[tuple[int, int]]] = defaultdict(set)
+    for p in dados.pessoas:
+        if p.ultimo_plantao_manual is not None:
+            ultimo_inicial[p.id] = p.ultimo_plantao_manual
+            semanas_iniciais[p.id].add(chave_da_semana(p.ultimo_plantao_manual))
+
     contadores = Contadores(
-        carga={p.id: 0 for p in dados.pessoas},
-        feriados={p.id: 0 for p in dados.pessoas},
-        ultimo_plantao={},
+        carga={p.id: p.ajuste_plantoes for p in dados.pessoas},
+        feriados={p.id: p.ajuste_feriados for p in dados.pessoas},
+        ultimo_plantao=ultimo_inicial,
         vezes_juntos=defaultdict(int),
         vezes_no_turno=defaultdict(int),
-        semanas_trabalhadas=defaultdict(set),
+        semanas_trabalhadas=semanas_iniciais,
     )
 
     # Coleta todos os plantões de escalas confirmadas
@@ -147,13 +156,44 @@ def calcular_contadores(dados: DadosDoPrograma) -> Contadores:
     return contadores
 
 
+def ajustar_contadores_pessoa(
+    dados: DadosDoPrograma,
+    id_pessoa: int,
+    plantoes_feitos: int,
+    feriados_trabalhados: int,
+    ultimo_plantao: date | None,
+) -> None:
+    """Define manualmente os contadores atuais de uma pessoa no Quadro de Justiça."""
+    pessoa = dados.buscar_pessoa(id_pessoa)
+    if pessoa is None:
+        raise ErroEscala("Pessoa não encontrada.")
+    if plantoes_feitos < 0 or feriados_trabalhados < 0:
+        raise ErroEscala(
+            f"Os números de plantões de {pessoa.nome} não podem ser negativos."
+        )
+
+    plantoes_confirmados = 0
+    feriados_confirmados = 0
+    for escala in dados.escalas:
+        if escala.confirmada:
+            for plantao in escala.plantoes:
+                if id_pessoa in plantao.pessoas():
+                    plantoes_confirmados += 1
+                    if plantao.eh_feriado:
+                        feriados_confirmados += 1
+
+    pessoa.ajuste_plantoes = plantoes_feitos - plantoes_confirmados
+    pessoa.ajuste_feriados = feriados_trabalhados - feriados_confirmados
+    pessoa.ultimo_plantao_manual = ultimo_plantao
+
+
 def quadro_de_justica(dados: DadosDoPrograma) -> list[ResumoJustica]:
     """Retorna as pessoas ativas ordenadas por prioridade (quem está na frente da fila vem primeiro)."""
     contadores = calcular_contadores(dados)
 
-    # Contagem real direta (sem a elevação de piso)
-    plantoes_reais: dict[int, int] = {p.id: 0 for p in dados.pessoas}
-    feriados_reais: dict[int, int] = {p.id: 0 for p in dados.pessoas}
+    # Contagem real direta (sem a elevação de piso, mas somando o saldo inicial/ajuste manual)
+    plantoes_reais: dict[int, int] = {p.id: p.ajuste_plantoes for p in dados.pessoas}
+    feriados_reais: dict[int, int] = {p.id: p.ajuste_feriados for p in dados.pessoas}
 
     for escala in dados.escalas:
         if escala.confirmada:

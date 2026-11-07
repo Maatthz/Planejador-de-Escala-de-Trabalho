@@ -169,3 +169,48 @@ def test_quadro_de_justica_ordena_e_distingue_reais_de_justica(dados_padrao: Dad
     assert resumo_p3.plantoes_reais == 0
     assert resumo_p3.carga_justica == 1
     assert resumo_p3.ultimo_plantao is None
+
+
+def test_ajustar_contadores_pessoa_manual_e_soma_automatica(
+    dados_padrao: DadosDoPrograma, pasta_temporaria
+) -> None:
+    """Preencher o Quadro de Justiça manualmente ordena a fila e soma novas escalas confirmadas."""
+    from src.escala.armazenamento import carregar, salvar
+    from src.escala.historico import ajustar_contadores_pessoa
+
+    dados_padrao.pessoas = dados_padrao.pessoas[:3]
+    p1, p2, p3 = dados_padrao.pessoas
+
+    # Define valores iniciais diferentes para cada pessoa (escala já em andamento)
+    ajustar_contadores_pessoa(dados_padrao, p1.id, 5, 2, date(2026, 10, 31))
+    ajustar_contadores_pessoa(dados_padrao, p2.id, 3, 1, date(2026, 10, 24))
+    ajustar_contadores_pessoa(dados_padrao, p3.id, 4, 0, None)
+
+    salvar(dados_padrao, pasta_temporaria)
+    recarregado, _ = carregar(pasta_temporaria)
+
+    quadro = quadro_de_justica(recarregado)
+    # Ordem de prioridade: p2 (3) -> p3 (4) -> p1 (5)
+    assert [r.pessoa.id for r in quadro] == [p2.id, p3.id, p1.id]
+    assert quadro[0].plantoes_reais == 3
+    assert quadro[0].feriados_trabalhados == 1
+    assert quadro[0].ultimo_plantao == date(2026, 10, 24)
+
+    # Quando uma nova escala é confirmada com p2 e p3 trabalhando em feriado:
+    plantao_novo = Plantao(
+        data=date(2026, 11, 7),
+        periodo="manhã",
+        qtd_duplas=1,
+        eh_feriado=True,
+        duplas=[Dupla(p2.id, p3.id)],
+    )
+    recarregado.escalas.append(
+        Escala(plantoes=[plantao_novo], gerada_em=datetime.now(), confirmada=True)
+    )
+
+    quadro_pos = quadro_de_justica(recarregado)
+    res_p2 = next(r for r in quadro_pos if r.pessoa.id == p2.id)
+    assert res_p2.plantoes_reais == 4
+    assert res_p2.carga_justica == 4
+    assert res_p2.feriados_trabalhados == 2
+    assert res_p2.ultimo_plantao == date(2026, 11, 7)

@@ -25,6 +25,9 @@ class Pessoa:
     ativo: bool = True
     data_entrada: date = field(default_factory=date.today)
     indisponibilidades: set[date] = field(default_factory=set)
+    ajuste_plantoes: int = 0
+    ajuste_feriados: int = 0
+    ultimo_plantao_manual: date | None = None
 
 
 @dataclass

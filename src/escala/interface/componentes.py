@@ -254,8 +254,11 @@ def mostrar_info(pai, texto: str) -> None:
     btn_ok.pack(pady=(0, 16))
 
 
-def perguntar_sim_nao(pai, titulo: str, texto: str) -> bool:
+def perguntar_sim_nao(pai, titulo: str, texto: str | None = None) -> bool:
     """Abre um diálogo modal de confirmação retornando True (Sim) ou False (Não)."""
+    if texto is None:
+        texto = titulo
+        titulo = "Confirmação"
     resposta = {"confirmou": False}
 
     janela = ctk.CTkToplevel(pai)

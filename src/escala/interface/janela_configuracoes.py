@@ -864,6 +864,7 @@ class JanelaConfiguracoes(ctk.CTkToplevel):
 
         if not perguntar_sim_nao(
             self,
+            "Restaurar cópia de segurança",
             "Atenção: Restaurar uma cópia de segurança substituirá todos os dados atuais "
             "(equipe, folgas, escalas e configurações).\n\nDeseja realmente continuar?",
         ):
@@ -887,6 +888,7 @@ class JanelaConfiguracoes(ctk.CTkToplevel):
         """Restaura todas as configurações para os padrões de fábrica após confirmação."""
         if not perguntar_sim_nao(
             self,
+            "Restaurar padrão",
             "Deseja restaurar todas as configurações para os padrões de fábrica?\n\n"
             "Todas as preferências personalizadas de turnos, duplas e mensagens serão redefinidas.",
         ):
@@ -920,11 +922,13 @@ class JanelaConfiguracoes(ctk.CTkToplevel):
                     nome_dia = DIAS_DA_SEMANA[dia_idx] if 0 <= dia_idx < len(DIAS_DA_SEMANA) else str(dia_idx)
                     if not perguntar_sim_nao(
                         self,
-                        f"Aviso de capacidade:\n\nNo {nome_dia}, são necessárias {pessoas_necessarias} pessoas "
+                        "Aviso de capacidade",
+                        f"No {nome_dia}, são necessárias {pessoas_necessarias} pessoas "
                         f"({total_duplas} duplas), mas há apenas {len(pessoas_ativas)} pessoas ativas na equipe.\n\n"
                         f"Deseja salvar as configurações mesmo assim?",
                     ):
                         return
+                    break
 
             # 2. Validação de períodos
             texto_periodos = self.entry_periodos.get().strip()

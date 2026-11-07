@@ -134,8 +134,11 @@ def test_janela_configuracoes_restaurar_padrao(
     dados_padrao.configuracao.semanas_por_geracao = 3
     dados_padrao.configuracao.modo_experiencia = "obrigatoria"
 
-    # Confirmação 'Sim'
-    monkeypatch.setattr("src.escala.interface.janela_configuracoes.perguntar_sim_nao", lambda *args, **kwargs: True)
+    # Confirmação 'Sim' exigindo os 3 argumentos (pai, titulo, texto)
+    monkeypatch.setattr(
+        "src.escala.interface.janela_configuracoes.perguntar_sim_nao",
+        lambda pai, titulo, texto: True,
+    )
 
     app_janela_config.dados = dados_padrao
     janela = JanelaConfiguracoes(pai=app_janela_config, dados=dados_padrao, ao_mudar=app_janela_config.ao_mudar)
@@ -208,7 +211,10 @@ def test_janela_configuracoes_backup_manual(
     monkeypatch.setattr("src.escala.interface.janela_configuracoes.mostrar_info", lambda pai, txt: infos.append(txt))
     monkeypatch.setattr("tkinter.filedialog.asksaveasfilename", lambda **kwargs: str(caminho_backup))
     monkeypatch.setattr("tkinter.filedialog.askopenfilename", lambda **kwargs: str(caminho_backup))
-    monkeypatch.setattr("src.escala.interface.janela_configuracoes.perguntar_sim_nao", lambda *args, **kwargs: True)
+    monkeypatch.setattr(
+        "src.escala.interface.janela_configuracoes.perguntar_sim_nao",
+        lambda pai, titulo, texto: True,
+    )
 
     app_janela_config.dados = dados_padrao
     janela = JanelaConfiguracoes(pai=app_janela_config, dados=dados_padrao, ao_mudar=app_janela_config.ao_mudar)
@@ -225,3 +231,31 @@ def test_janela_configuracoes_backup_manual(
     # Restaura cópia
     janela._restaurar_copia_manual()
     assert len(app_janela_config.dados.pessoas) == 28
+
+
+def test_janela_configuracoes_salvar_com_equipe_pequena(
+    app_janela_config: JanelaPrincipal, pasta_temporaria: Path, monkeypatch
+) -> None:
+    """Salvar configurações quando há menos pessoas que o turno pede deve exibir aviso de capacidade sem erro."""
+    dados_vazios = DadosDoPrograma()
+    perguntas: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        "src.escala.interface.janela_configuracoes.perguntar_sim_nao",
+        lambda pai, titulo, texto: (perguntas.append((titulo, texto)), True)[1],
+    )
+    monkeypatch.setattr(
+        "src.escala.interface.janela_configuracoes.mostrar_info",
+        lambda pai, txt: None,
+    )
+
+    app_janela_config.dados = dados_vazios
+    janela = JanelaConfiguracoes(
+        pai=app_janela_config,
+        dados=dados_vazios,
+        ao_mudar=app_janela_config.ao_mudar,
+    )
+    app_janela_config.update_idletasks()
+
+    janela._salvar()
+    assert len(perguntas) == 1
+    assert perguntas[0][0] == "Aviso de capacidade"

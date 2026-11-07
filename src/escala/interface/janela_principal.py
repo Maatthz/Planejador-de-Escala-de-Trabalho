@@ -219,6 +219,7 @@ class JanelaPrincipal(ctk.CTk):
             self,
             "Atualização disponível",
             f"Nova versão {info.versao} disponível! Deseja atualizar agora?",
+            variante_confirmar="sucesso",
         )
         if not deseja:
             return

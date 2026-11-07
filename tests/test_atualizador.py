@@ -183,7 +183,7 @@ def test_baixar_e_verificar_sha256_diferente_apaga_arquivo(
 def test_instalar_e_reiniciar_cria_script_e_checa_permissao(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Verifica criação do script .bat de substituição e mensagem amigável sem permissão."""
+    """Verifica criação do script .bat de substituição, limpeza de _MEIPASS2 e permissão."""
     exe_atual_falso = tmp_path / "instalado" / NOME_DO_EXE
     exe_atual_falso.parent.mkdir(parents=True)
     exe_atual_falso.write_bytes(b"versao_antiga")
@@ -193,12 +193,14 @@ def test_instalar_e_reiniciar_cria_script_e_checa_permissao(
     novo_exe.write_bytes(b"versao_nova")
 
     monkeypatch.setattr(sys, "executable", str(exe_atual_falso))
+    monkeypatch.setenv("_MEIPASS2", r"C:\Temp\_MEI000067582")
+    monkeypatch.setenv("TCL_LIBRARY", r"C:\Temp\_MEI000067582\tcl")
 
-    comandos_executados: list[list[str]] = []
+    comandos_executados: list[tuple[list[str], dict]] = []
     monkeypatch.setattr(
         atualizador.subprocess,
         "Popen",
-        lambda cmd, **kw: comandos_executados.append(cmd),
+        lambda cmd, **kw: comandos_executados.append((cmd, kw)),
     )
     monkeypatch.setattr(
         sys,
@@ -211,8 +213,13 @@ def test_instalar_e_reiniciar_cria_script_e_checa_permissao(
 
     bat_criado = novo_exe.parent / "atualizar_escala.bat"
     assert bat_criado.exists()
-    assert str(exe_atual_falso) in bat_criado.read_text(encoding="utf-8")
+    conteudo_bat = bat_criado.read_text(encoding="utf-8")
+    assert str(exe_atual_falso) in conteudo_bat
+    assert "set _MEIPASS2=" in conteudo_bat
     assert len(comandos_executados) == 1
+    _, kwargs_popen = comandos_executados[0]
+    assert "_MEIPASS2" not in kwargs_popen["env"]
+    assert "TCL_LIBRARY" not in kwargs_popen["env"]
 
 
 def test_instalar_e_reiniciar_sem_permissao_escrita(

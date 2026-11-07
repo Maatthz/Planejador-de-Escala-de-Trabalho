@@ -254,7 +254,12 @@ def mostrar_info(pai, texto: str) -> None:
     btn_ok.pack(pady=(0, 16))
 
 
-def perguntar_sim_nao(pai, titulo: str, texto: str | None = None) -> bool:
+def perguntar_sim_nao(
+    pai,
+    titulo: str,
+    texto: str | None = None,
+    variante_confirmar: str = "perigo",
+) -> bool:
     """Abre um diálogo modal de confirmação retornando True (Sim) ou False (Não)."""
     if texto is None:
         texto = titulo
@@ -288,7 +293,13 @@ def perguntar_sim_nao(pai, titulo: str, texto: str | None = None) -> bool:
     btn_nao = BotaoGrande(botoes_frame, "Cancelar", _ao_cancelar, variante="secundaria", height=38)
     btn_nao.pack(side="left", expand=True, padx=(0, 8))
 
-    btn_sim = BotaoGrande(botoes_frame, "Sim, continuar", _ao_confirmar, variante="perigo", height=38)
+    btn_sim = BotaoGrande(
+        botoes_frame,
+        "Sim, continuar",
+        _ao_confirmar,
+        variante=variante_confirmar,
+        height=38,
+    )
     btn_sim.pack(side="right", expand=True, padx=(8, 0))
 
     janela.wait_window()

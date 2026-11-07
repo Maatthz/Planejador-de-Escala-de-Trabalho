@@ -192,6 +192,25 @@ def _verificar_permissao_escrita(pasta: Path) -> None:
         ) from erro
 
 
+def _ambiente_limpo_para_reinicio() -> dict[str, str]:
+    """Remove variáveis herdadas do PyInstaller (--onefile) para o novo .exe extrair sua própria DLL."""
+    prefixos_bloqueados = ("_MEI", "PYINSTALLER")
+    chaves_bloqueadas = {"TCL_LIBRARY", "TK_LIBRARY", "PYTHONPATH", "PYTHONHOME"}
+    ambiente = {
+        chave: valor
+        for chave, valor in os.environ.items()
+        if not chave.upper().startswith(prefixos_bloqueados)
+        and chave.upper() not in chaves_bloqueadas
+    }
+    pasta_mei = getattr(sys, "_MEIPASS", None)
+    if pasta_mei and "PATH" in ambiente:
+        partes = ambiente["PATH"].split(os.pathsep)
+        ambiente["PATH"] = os.pathsep.join(
+            p for p in partes if os.path.normcase(p) != os.path.normcase(pasta_mei)
+        )
+    return ambiente
+
+
 def instalar_e_reiniciar(novo_exe: Path) -> None:
     """Cria um .bat que espera o programa fechar, substitui o .exe, reabre e se apaga; executa e encerra."""
     exe_atual = Path(sys.executable).resolve()
@@ -201,15 +220,29 @@ def instalar_e_reiniciar(novo_exe: Path) -> None:
     conteudo_bat = (
         "@echo off\r\n"
         "chcp 65001 >nul\r\n"
-        "timeout /t 2 /nobreak >nul\r\n"
-        f'move /y "{novo_exe.resolve()}" "{exe_atual}" >nul\r\n'
+        "set _MEIPASS=\r\n"
+        "set _MEIPASS2=\r\n"
+        "set TCL_LIBRARY=\r\n"
+        "set TK_LIBRARY=\r\n"
+        "set PYTHONPATH=\r\n"
+        "set PYTHONHOME=\r\n"
+        "for /L %%i in (1,1,15) do (\r\n"
+        "    timeout /t 1 /nobreak >nul\r\n"
+        f'    move /y "{novo_exe.resolve()}" "{exe_atual}" >nul 2>nul && goto :iniciar\r\n'
+        ")\r\n"
+        ":iniciar\r\n"
         f'start "" "{exe_atual}"\r\n'
         'del "%~f0"\r\n'
     )
     caminho_bat.write_text(conteudo_bat, encoding="utf-8")
 
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-    subprocess.Popen(["cmd.exe", "/c", str(caminho_bat)], creationflags=flags)
+    ambiente_limpo = _ambiente_limpo_para_reinicio()
+    subprocess.Popen(
+        ["cmd.exe", "/c", str(caminho_bat)],
+        creationflags=flags,
+        env=ambiente_limpo,
+    )
     sys.exit(0)
 
 

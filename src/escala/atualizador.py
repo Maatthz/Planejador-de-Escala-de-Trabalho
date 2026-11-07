@@ -194,7 +194,7 @@ def _verificar_permissao_escrita(pasta: Path) -> None:
 
 def _ambiente_limpo_para_reinicio() -> dict[str, str]:
     """Remove variáveis herdadas do PyInstaller (--onefile) para o novo .exe extrair sua própria DLL."""
-    prefixos_bloqueados = ("_MEI", "PYINSTALLER")
+    prefixos_bloqueados = ("_MEI", "_PYI", "PYINSTALLER")
     chaves_bloqueadas = {"TCL_LIBRARY", "TK_LIBRARY", "PYTHONPATH", "PYTHONHOME"}
     ambiente = {
         chave: valor
@@ -202,6 +202,7 @@ def _ambiente_limpo_para_reinicio() -> dict[str, str]:
         if not chave.upper().startswith(prefixos_bloqueados)
         and chave.upper() not in chaves_bloqueadas
     }
+    ambiente["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
     pasta_mei = getattr(sys, "_MEIPASS", None)
     if pasta_mei and "PATH" in ambiente:
         partes = ambiente["PATH"].split(os.pathsep)
@@ -220,6 +221,11 @@ def instalar_e_reiniciar(novo_exe: Path) -> None:
     conteudo_bat = (
         "@echo off\r\n"
         "chcp 65001 >nul\r\n"
+        "set PYINSTALLER_RESET_ENVIRONMENT=1\r\n"
+        "set _PYI_APPLICATION_HOME_DIR=\r\n"
+        "set _PYI_ARCHIVE_FILE=\r\n"
+        "set _PYI_PARENT_PROCESS_LEVEL=\r\n"
+        "set _PYI_SPLASH_IPC=\r\n"
         "set _MEIPASS=\r\n"
         "set _MEIPASS2=\r\n"
         "set TCL_LIBRARY=\r\n"

@@ -194,6 +194,8 @@ def test_instalar_e_reiniciar_cria_script_e_checa_permissao(
 
     monkeypatch.setattr(sys, "executable", str(exe_atual_falso))
     monkeypatch.setenv("_MEIPASS2", r"C:\Temp\_MEI000067582")
+    monkeypatch.setenv("_PYI_APPLICATION_HOME_DIR", r"C:\Temp\_MEI000067582")
+    monkeypatch.setenv("_PYI_PARENT_PROCESS_LEVEL", "1")
     monkeypatch.setenv("TCL_LIBRARY", r"C:\Temp\_MEI000067582\tcl")
 
     comandos_executados: list[tuple[list[str], dict]] = []
@@ -215,10 +217,14 @@ def test_instalar_e_reiniciar_cria_script_e_checa_permissao(
     assert bat_criado.exists()
     conteudo_bat = bat_criado.read_text(encoding="utf-8")
     assert str(exe_atual_falso) in conteudo_bat
-    assert "set _MEIPASS2=" in conteudo_bat
+    assert "set _PYI_APPLICATION_HOME_DIR=" in conteudo_bat
+    assert "set PYINSTALLER_RESET_ENVIRONMENT=1" in conteudo_bat
     assert len(comandos_executados) == 1
     _, kwargs_popen = comandos_executados[0]
     assert "_MEIPASS2" not in kwargs_popen["env"]
+    assert "_PYI_APPLICATION_HOME_DIR" not in kwargs_popen["env"]
+    assert "_PYI_PARENT_PROCESS_LEVEL" not in kwargs_popen["env"]
+    assert kwargs_popen["env"]["PYINSTALLER_RESET_ENVIRONMENT"] == "1"
     assert "TCL_LIBRARY" not in kwargs_popen["env"]
 
 

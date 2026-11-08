@@ -37,21 +37,21 @@ def abrir_dialogo_configuracoes(
     dd_dia_turno = ft.Dropdown(
         label="Dia",
         value="5",
-        width=135,
+        width=160,
         dense=True,
         options=[ft.DropdownOption(key=str(i), text=nome) for i, nome in enumerate(DIAS_DA_SEMANA)],
     )
     dd_per_turno = ft.Dropdown(
         label="Período",
         value=cfg_temp.periodos[0] if cfg_temp.periodos else "manhã",
-        width=135,
+        width=165,
         dense=True,
         options=[ft.DropdownOption(key=p, text=p.capitalize()) for p in cfg_temp.periodos],
     )
     dd_dup_turno = ft.Dropdown(
         label="Duplas",
         value="4",
-        width=110,
+        width=145,
         dense=True,
         options=[ft.DropdownOption(key=str(n), text=f"{n} duplas") for n in range(1, 9)],
     )
@@ -113,21 +113,21 @@ def abrir_dialogo_configuracoes(
     dd_fer_per = ft.Dropdown(
         label="Período padrão",
         value=per_fer_atual,
-        width=150,
+        width=175,
         dense=True,
         options=[ft.DropdownOption(key=p, text=p.capitalize()) for p in cfg_temp.periodos],
     )
     dd_fer_qtd = ft.Dropdown(
         label="Duplas padrão",
         value=qtd_fer_atual,
-        width=130,
+        width=160,
         dense=True,
         options=[ft.DropdownOption(key=str(n), text=f"{n} duplas") for n in range(1, 9)],
     )
     dd_modo_exp = ft.Dropdown(
         label="Modo de experiência",
         value=cfg_temp.modo_experiencia,
-        width=260,
+        width=310,
         dense=True,
         options=[
             ft.DropdownOption(key="preferencia", text="Preferência (recomendado)"),
@@ -138,7 +138,7 @@ def abrir_dialogo_configuracoes(
     dd_semanas_padrao = ft.Dropdown(
         label="Semanas por vez",
         value=str(cfg_temp.semanas_por_geracao),
-        width=160,
+        width=180,
         dense=True,
         options=[ft.DropdownOption(key=str(n), text=f"{n} semana(s)") for n in range(1, 5)],
     )
@@ -172,8 +172,8 @@ def abrir_dialogo_configuracoes(
 
     def _criar_editor_pares(lista_pares: list[tuple[int, int]], simbolo: str) -> ft.Column:
         col_itens = ft.Column(spacing=4)
-        dd_a = ft.Dropdown(label="Pessoa 1", width=180, dense=True, options=opcoes_pessoas)
-        dd_b = ft.Dropdown(label="Pessoa 2", width=180, dense=True, options=opcoes_pessoas)
+        dd_a = ft.Dropdown(label="Pessoa 1", width=210, dense=True, options=opcoes_pessoas)
+        dd_b = ft.Dropdown(label="Pessoa 2", width=210, dense=True, options=opcoes_pessoas)
 
         def _atualizar_pares() -> None:
             col_itens.controls.clear()

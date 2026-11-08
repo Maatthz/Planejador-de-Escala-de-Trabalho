@@ -510,13 +510,13 @@ def abrir_dialogo_feriados(
     dd_periodo = ft.Dropdown(
         label="Período",
         value=per_inicial,
-        width=140,
+        width=170,
         options=[ft.DropdownOption(key=p, text=p.capitalize()) for p in dados.configuracao.periodos],
     )
     dd_duplas = ft.Dropdown(
         label="Duplas",
         value=dup_inicial,
-        width=105,
+        width=145,
         options=[ft.DropdownOption(key=str(n), text=f"{n} duplas") for n in range(1, 7)],
     )
     lista_feriados = ft.Column(spacing=6, scroll=ft.ScrollMode.AUTO, height=220)

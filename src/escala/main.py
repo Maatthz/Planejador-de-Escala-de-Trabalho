@@ -1,13 +1,31 @@
-"""Ponto de entrada do programa: configura logging, carrega dados e abre a janela."""
+"""Ponto de entrada do programa: configura logging, trava de instância única, carrega dados e abre a janela Flet."""
 
 import logging
 from logging.handlers import RotatingFileHandler
+import msvcrt
 from pathlib import Path
-from types import TracebackType
+from typing import TextIO
 
 from src.escala.armazenamento import carregar, pasta_de_dados
-from src.escala.interface.componentes import mostrar_erro
-from src.escala.interface.janela_principal import JanelaPrincipal
+from src.escala.interface_flet.app_flet import iniciar_app_flet
+
+_ARQUIVO_TRAVA: TextIO | None = None
+
+
+def adquirir_trava_instancia(pasta: Path | None = None) -> bool:
+    """Garante que apenas uma instância do programa rode por vez na mesma pasta de dados."""
+    global _ARQUIVO_TRAVA
+    diretorio = pasta if pasta is not None else pasta_de_dados()
+    diretorio.mkdir(parents=True, exist_ok=True)
+    caminho_lock = diretorio / "programa.lock"
+    try:
+        arq = caminho_lock.open("a+", encoding="utf-8")
+        arq.seek(0)
+        msvcrt.locking(arq.fileno(), msvcrt.LK_NBLCK, 1)
+        _ARQUIVO_TRAVA = arq
+        return True
+    except OSError:
+        return False
 
 
 def configurar_logging(pasta: Path | None = None) -> logging.Logger:
@@ -20,7 +38,7 @@ def configurar_logging(pasta: Path | None = None) -> logging.Logger:
     logger.setLevel(logging.INFO)
 
     caminhos_existentes = {
-         getattr(h, "baseFilename", None) for h in logger.handlers
+        getattr(h, "baseFilename", None) for h in logger.handlers
     }
     if str(arquivo_log.resolve()) not in caminhos_existentes:
         handler = RotatingFileHandler(
@@ -39,28 +57,15 @@ def configurar_logging(pasta: Path | None = None) -> logging.Logger:
 
 
 def iniciar() -> None:
-    """Configura o registro de logs, carrega os dados e inicia a janela principal."""
+    """Configura o registro de logs, carrega os dados e inicia a janela principal em Flet."""
     logger = configurar_logging()
+    if not adquirir_trava_instancia():
+        logger.warning("Tentativa de abrir segunda instância bloqueada (programa.lock ativo).")
+        return
+
     try:
         dados, aviso = carregar()
-        app = JanelaPrincipal(dados=dados, aviso_inicial=aviso)
-
-        def _tratar_erro_callback(
-            exc_type: type[BaseException],
-            exc_value: BaseException,
-            exc_tb: TracebackType | None,
-        ) -> None:
-            logger.error(
-                "Erro inesperado em evento da interface:",
-                exc_info=(exc_type, exc_value, exc_tb),
-            )
-            mostrar_erro(
-                app,
-                "Ocorreu um erro inesperado. Os detalhes foram salvos no arquivo de registro.",
-            )
-
-        app.report_callback_exception = _tratar_erro_callback
-        app.mainloop()
+        iniciar_app_flet(dados=dados, aviso_inicial=aviso)
     except Exception:
         logger.exception("Falha crítica ao iniciar o programa.")
         raise

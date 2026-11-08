@@ -211,3 +211,35 @@ def test_gerador_mesma_semente_mesma_escala(dados_padrao: DadosDoPrograma) -> No
         assert p1.periodo == p2.periodo
         for d1, d2 in zip(p1.duplas, p2.duplas):
             assert d1.ids() == d2.ids()
+
+
+def test_regerar_semana_ja_confirmada_ignora_escala_sobreposta(dados_padrao: DadosDoPrograma) -> None:
+    """Regerar uma semana que já possui escala confirmada deve produzir a mesma distribuição (Bug L2)."""
+    from src.escala.edicao import confirmar_rascunho
+
+    inicio = date(2026, 11, 2)
+    esc1 = gerar_escala(dados_padrao, inicio=inicio, qtd_semanas=1, semente=99)
+    ids_primeira = [d.ids() for pl in esc1.plantoes for d in pl.duplas]
+    confirmar_rascunho(dados_padrao)
+
+    esc2 = gerar_escala(dados_padrao, inicio=inicio, qtd_semanas=1, semente=99)
+    ids_segunda = [d.ids() for pl in esc2.plantoes for d in pl.duplas]
+    assert ids_primeira == ids_segunda
+
+
+def test_experiencia_obrigatoria_com_dupla_fixa_e_nunca_juntos() -> None:
+    """No modo obrigatória, nunca deve formar dupla sem experiente mesmo com restrições (Bug L3)."""
+    from src.escala.gerador import formar_duplas
+    from src.escala.historico import calcular_contadores
+    from src.escala.modelos import Configuracao, DadosDoPrograma, Pessoa
+
+    p1 = Pessoa(id=1, nome="Exp1", experiente=True)
+    p2 = Pessoa(id=2, nome="Exp2", experiente=True)
+    p3 = Pessoa(id=3, nome="Nov1", experiente=False)
+    p4 = Pessoa(id=4, nome="Nov2", experiente=False)
+    cfg = Configuracao(modo_experiencia="obrigatoria", sempre_juntos=[(1, 2)])
+    cont = calcular_contadores(DadosDoPrograma(pessoas=[p1, p2, p3, p4], configuracao=cfg))
+    duplas = formar_duplas([p1, p2, p3, p4], cont, cfg)
+    for d in duplas:
+        tem_exp = (d.pessoa_a in {1, 2}) or (d.pessoa_b in {1, 2})
+        assert tem_exp is True

@@ -387,3 +387,42 @@ em uma pessoa na aba Folgas), o `AGENTS.md` recebeu as seções **10.4 (Regras d
 **Conceitos aprendidos:**
 - **Migração de Sistema Legado / Carga Inicial (*Data Seeding / Onboarding*):** ao substituir um processo manual (planilha/papel) por um software, é essencial permitir importar ou digitar o estado acumulado até aquele momento para não zerar o histórico da equipe.
 - **Persistência Retrocompatível (*Backward-Compatible Serialization*):** uso de `.get("campo", valor_padrao)` ao ler JSON para que arquivos `dados.json` salvos em versões anteriores continuem abrindo sem erro após adicionar novos atributos ao modelo.
+
+
+## 07/11/2026 — Revisão de Tech Lead e Protótipo Comparativo em Flet (`prototipo_flet/`)
+
+**O que mudou:**
+1. Elaborado o relatório de revisão arquitetural, visual, de performance e de lógica em [`docs/REVISAO_TECH_LEAD.md`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/docs/REVISAO_TECH_LEAD.md), acompanhado de script de reprodução empírica ([`docs/revisao/verificar_bugs.py`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/docs/revisao/verificar_bugs.py)) e capturas de tela reais.
+2. Criado um protótipo funcional completo em **Flet (Material Design 3)** na pasta isolada [`prototipo_flet/`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/prototipo_flet/app.py), reaproveitando 100% da camada de lógica existente (`src/escala/`) sem modificar nenhum arquivo de código do projeto principal.
+
+**Decisões:**
+- **Prova prática do desacoplamento em camadas:** como `modelos.py`, `datas.py`, `armazenamento.py`, `historico.py`, `gerador.py`, `edicao.py` e `exportar.py` nunca importaram `customtkinter`, foi possível construir uma interface inteiramente nova em Flet sem reescrever nenhuma linha de regra de negócio.
+- **Isolamento de dados do protótipo:** [`prototipo_flet/dados_exemplo.py`](file:///C:/Users/Matheus/Documents/GitHub/Planejador%20de%20Escala%20de%20Trabalho/prototipo_flet/dados_exemplo.py) salva e carrega em `prototipo_flet/dados_prototipo/` usando as funções `carregar(pasta=...)` e `salvar(dados, pasta=...)` de `armazenamento.py`, preservando intocados os dados reais em `%APPDATA%`.
+- **Correções visuais e de UX demonstradas no protótipo:** barra superior responsiva com `wrap=True` (nunca corta o botão `"Gerar escala"`), ícones vetoriais coloridos (`ft.Icons`), alternância em tempo real entre Modo Claro e Modo Escuro, visualização de escalas do histórico mesmo com rascunho aberto, diálogo de troca com busca e ordenação por menor carga, e painel `"Quem folga nesta escala"`.
+
+**Conceitos aprendidos:**
+- **Independência de Framework de UI (*UI-Agnostic Domain Layer*):** quando a camada de domínio não conhece a biblioteca gráfica, trocar ou comparar tecnologias de interface (CustomTkinter vs. Flet) afeta apenas a camada de apresentação.
+- **Árvore Declarativa de Controles e Material Design 3 (Flet / Flutter):** construção de interfaces baseada na composição de controles (`Row`, `Column`, `ResponsiveRow`, `NavigationRail`, `SegmentedButton`, `DatePicker`) renderizados por motor gráfico acelerado por GPU (Skia/Impeller), com suporte nativo a ícones vetoriais, sombras e temas claro/escuro.
+
+---
+
+## 07/11/2026 — Migração Oficial para Flet e Correção de Bugs de Negócio e Persistência
+
+### O que mudou
+- Oficializada a interface gráfica em **Flet** no pacote `src/escala/interface_flet/` (`app_flet.py`, `tema.py`, `visao_escala.py`, `visao_equipe_folgas.py`, `dialogos.py`, `janela_configuracoes.py`), conectada ao armazenamento real (`%APPDATA%/PlanejadorEscala/dados.json`), à recuperação automática de backup e ao atualizador via GitHub Releases.
+- Adicionadas na interface Flet todas as funcionalidades de produção que faltavam no protótipo: janela completa de **Configurações** com ajuda contextual (`criar_bloco_ajuda` + `textos_ajuda.py`), **edição manual em lote** no Quadro de Justiça, registro de **período contínuo de férias**, exclusão segura de integrantes e trava de instância única (`programa.lock` com `msvcrt.locking`).
+- Corrigidos todos os bugs de lógica e persistência apontados na revisão (`docs/REVISAO_TECH_LEAD.md`):
+  - **L1 (`historico.py`)**: `esta_presente` agora exige `pessoa.ativo == True`, impedindo que integrantes desativados puxem o piso semanal para zero e penalizem quem retorna de férias.
+  - **L2 (`gerador.py`)**: `gerar_escala` ignora escalas já confirmadas sobrepostas ao período sendo gerado (ou futuras), permitindo regerar uma semana já confirmada com justiça idêntica.
+  - **L3 (`gerador.py` e `edicao.py`)**: `modo_experiencia == "obrigatoria"` agora atribui custo infinito (`float("inf")`) a pares sem experiente, desfaz duplas fixas de 2 experientes quando necessário para cobrir as demais duplas e emite avisos na troca manual/validação.
+  - **L4 (`historico.py`)**: `ajustar_contadores_pessoa` só grava `ultimo_plantao_manual` quando a data difere do último plantão calculado pelo histórico confirmado.
+  - **E2/E3 (`armazenamento.py`)**: adicionado `f.flush()` + `os.fsync(f.fileno())` antes de `os.replace` e evitada a duplicação de `RotatingFileHandler` no arquivo `registro.log`.
+  - **V1/L5/L6/L8/L10 (`src/escala/interface/*`)**: corrigidos o empacotamento do botão `Gerar escala`, a visualização de escalas históricas com rascunho ativo e a atualização de referências após restauração de cópia.
+
+### Decisões tomadas
+- Manter `src/escala/interface/` (CustomTkinter) com os bugs visuais corrigidos para preservar 100% dos 105 testes legados verdes, adicionando testes específicos para a nova interface em `tests/test_interface_flet.py` e testes de regressão em `tests/test_historico.py` e `tests/test_gerador.py`.
+
+### Conceitos aprendidos
+- **Durabilidade de Disco (`os.fsync`)**: garante que o buffer do sistema operacional seja fisicamente gravado no disco antes da troca atômica do arquivo (`os.replace`), prevenindo arquivos truncados em quedas de energia.
+- **Trava de Instância Única (*Single-Instance File Lock*)**: uso de bloqueio não-bloqueante de arquivo (`msvcrt.locking` no Windows) para evitar que duas janelas abertas ao mesmo tempo sobrescrevam o JSON uma da outra (*last-write-wins*).
+- **Testabilidade de UI com Dublês (*Test Doubles / Fake Page*)**: criação de uma classe `PaginaFalsa` que simula o contrato de `ft.Page` em memória, permitindo testar toda a construção de telas e diálogos Flet em milissegundos no `pytest`.

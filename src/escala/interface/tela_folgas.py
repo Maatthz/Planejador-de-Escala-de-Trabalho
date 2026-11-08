@@ -179,6 +179,8 @@ class TelaFolgas(ctk.CTkFrame):
             pessoa_atual = self.dados.buscar_pessoa(self.pessoa_selecionada.id)
             if pessoa_atual is None or not pessoa_atual.ativo:
                 self.pessoa_selecionada = None
+            else:
+                self.pessoa_selecionada = pessoa_atual
 
         self._atualizar_lista_pessoas()
         self._atualizar_painel_direito()

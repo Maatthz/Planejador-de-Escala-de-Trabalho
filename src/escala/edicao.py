@@ -61,6 +61,21 @@ def trocar_pessoa(
                 f"{p_entra.nome} marcou folga neste dia ({formatar_data(plantao.data)})."
             )
 
+    par_novo = frozenset([dupla_alvo.pessoa_a, dupla_alvo.pessoa_b])
+    for proibido in dados.configuracao.nunca_juntos:
+        if frozenset(proibido) == par_novo:
+            p1 = dados.buscar_pessoa(dupla_alvo.pessoa_a)
+            p2 = dados.buscar_pessoa(dupla_alvo.pessoa_b)
+            n1 = p1.nome if p1 else str(dupla_alvo.pessoa_a)
+            n2 = p2.nome if p2 else str(dupla_alvo.pessoa_b)
+            avisos.append(f"A dupla {n1} e {n2} quebra a restrição de 'Nunca juntos'.")
+
+    if dados.configuracao.modo_experiencia == "obrigatoria":
+        p1 = dados.buscar_pessoa(dupla_alvo.pessoa_a)
+        p2 = dados.buscar_pessoa(dupla_alvo.pessoa_b)
+        if not (p1 and p1.experiente) and not (p2 and p2.experiente):
+            avisos.append("Esta dupla ficou sem nenhum integrante experiente (modo Obrigatória).")
+
     return avisos
 
 
@@ -105,6 +120,17 @@ def validar_escala(escala: Escala, dados: DadosDoPrograma) -> list[str]:
                     desc = descrever_plantao(plantao)
                     avisos.append(
                         f"A dupla {n1} e {n2} no {desc} quebra a restrição de 'Nunca juntos'."
+                    )
+
+            if dados.configuracao.modo_experiencia == "obrigatoria":
+                p1 = dados.buscar_pessoa(dupla.pessoa_a)
+                p2 = dados.buscar_pessoa(dupla.pessoa_b)
+                if not (p1 and p1.experiente) and not (p2 and p2.experiente):
+                    n1 = p1.nome if p1 else str(dupla.pessoa_a)
+                    n2 = p2.nome if p2 else str(dupla.pessoa_b)
+                    desc = descrever_plantao(plantao)
+                    avisos.append(
+                        f"A dupla {n1} e {n2} no {desc} não possui integrante experiente."
                     )
 
         for id_pessoa in plantao.pessoas():

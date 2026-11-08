@@ -148,6 +148,8 @@ def custo_do_par(
     custo = 0.0
     if config.modo_experiencia != "ignorar":
         if not a.experiente and not b.experiente:
+            if config.modo_experiencia == "obrigatoria":
+                return float("inf")
             custo += 10.0
 
     custo += float(contadores.vezes_juntos.get(par, 0))
@@ -214,7 +216,7 @@ def escolher_pessoas(
 
     if config.modo_experiencia == "obrigatoria":
         _garantir_experiencia_obrigatoria(
-            escolhidas, ordenados, plantao, precisa
+            escolhidas, ordenados, plantao, precisa, config
         )
 
     return escolhidas
@@ -225,28 +227,41 @@ def _garantir_experiencia_obrigatoria(
     ordenados: list[Pessoa],
     plantao: Plantao,
     precisa: int,
+    config: Configuracao | None = None,
 ) -> None:
-    """Garante que haja no mínimo qtd_duplas experientes substituindo os de menor prioridade."""
-    qtd_exp = sum(1 for p in escolhidas if p.experiente)
-    if qtd_exp < plantao.qtd_duplas:
-        escolhidas_ids = {p.id for p in escolhidas}
-        exp_sobrando = [
-            p for p in ordenados if p.experiente and p.id not in escolhidas_ids
-        ]
-        falta = plantao.qtd_duplas - qtd_exp
-        if len(exp_sobrando) < falta:
-            desc = descrever_plantao(plantao)
-            total_disp = qtd_exp + len(exp_sobrando)
-            raise ErroEscala(
-                f"Não há pessoas experientes suficientes no {desc} para cumprir a regra obrigatória "
-                f"(precisa de {plantao.qtd_duplas}, há {total_disp}). "
-                f"Considere alterar a opção de experiência para 'Preferência' em Configurações."
-            )
+    """Garante que haja experientes suficientes substituindo os de menor prioridade."""
+    escolhidas_ids = {p.id for p in escolhidas}
+    duplas_fixas_ambos_exp = 0
+    if config is not None:
+        mapa_esc = {p.id: p for p in escolhidas}
+        for a, b in config.sempre_juntos:
+            if a in mapa_esc and b in mapa_esc and mapa_esc[a].experiente and mapa_esc[b].experiente:
+                duplas_fixas_ambos_exp += 1
 
+    qtd_exp = sum(1 for p in escolhidas if p.experiente)
+    exp_sobrando = [
+        p for p in ordenados if p.experiente and p.id not in escolhidas_ids
+    ]
+
+    if qtd_exp + len(exp_sobrando) < plantao.qtd_duplas:
+        desc = descrever_plantao(plantao)
+        total_disp = qtd_exp + len(exp_sobrando)
+        raise ErroEscala(
+            f"Não há pessoas experientes suficientes no {desc} para cumprir a regra obrigatória "
+            f"(precisa de {plantao.qtd_duplas}, há {total_disp}). "
+            f"Considere alterar a opção de experiência para 'Preferência' em Configurações."
+        )
+
+    meta_exp = min(
+        plantao.qtd_duplas + duplas_fixas_ambos_exp,
+        qtd_exp + len(exp_sobrando),
+    )
+    if qtd_exp < meta_exp:
+        falta = meta_exp - qtd_exp
         nao_exp_escolhidas = [
             p for p in reversed(ordenados) if p.id in escolhidas_ids and not p.experiente
         ]
-        for i in range(falta):
+        for i in range(min(falta, len(nao_exp_escolhidas), len(exp_sobrando))):
             sai = nao_exp_escolhidas[i]
             entra = exp_sobrando[i]
             idx = escolhidas.index(sai)
@@ -262,11 +277,18 @@ def formar_duplas(
     disponiveis = list(escolhidas)
     duplas: list[Dupla] = []
 
-    # 1. Duplas fixas primeiro
+    # 1. Duplas fixas primeiro (no modo obrigatória, só mantém 2 experientes juntos se sobrar experiente para as demais)
     for a, b in config.sempre_juntos:
         p_a = next((p for p in disponiveis if p.id == a), None)
         p_b = next((p for p in disponiveis if p.id == b), None)
         if p_a and p_b:
+            if config.modo_experiencia == "obrigatoria":
+                exp_restantes = sum(
+                    1 for p in disponiveis if p.experiente and p.id not in (a, b)
+                )
+                duplas_restantes = (len(disponiveis) - 2) // 2
+                if (not p_a.experiente and not p_b.experiente) or exp_restantes < duplas_restantes:
+                    continue
             duplas.append(Dupla(p_a.id, p_b.id))
             disponiveis.remove(p_a)
             disponiveis.remove(p_b)
@@ -302,7 +324,7 @@ def formar_duplas(
 
         if melhor_par is None or melhor_custo == float("inf"):
             raise ErroEscala(
-                "Não foi possível formar as duplas respeitando a restrição de 'Nunca juntos'. "
+                "Não foi possível formar as duplas respeitando as restrições de 'Nunca juntos' e de experiência. "
                 "Verifique os pares proibidos em Configurações."
             )
 
@@ -327,7 +349,19 @@ def gerar_escala(
     if not plantoes:
         raise ErroEscala("Não há plantões configurados para as datas selecionadas.")
 
-    contadores = copy.deepcopy(calcular_contadores(dados))
+    # Ignora escalas confirmadas que se sobrepõem ao período (serão substituídas ao confirmar)
+    datas_periodo = {p.data for p in plantoes}
+    primeira_data = plantoes[0].data
+    dados_base = copy.copy(dados)
+    dados_base.escalas = [
+        esc
+        for esc in dados.escalas
+        if esc.confirmada
+        and not datas_periodo.intersection({pl.data for pl in esc.plantoes})
+        and all(pl.data < primeira_data for pl in esc.plantoes)
+    ]
+
+    contadores = calcular_contadores(dados_base)
     sorteio = random.Random(semente)
 
     escalados_no_dia: dict[date, set[int]] = defaultdict(set)

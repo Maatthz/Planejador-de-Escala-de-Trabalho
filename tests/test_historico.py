@@ -214,3 +214,39 @@ def test_ajustar_contadores_pessoa_manual_e_soma_automatica(
     assert res_p2.carga_justica == 4
     assert res_p2.feriados_trabalhados == 2
     assert res_p2.ultimo_plantao == date(2026, 11, 7)
+
+
+def test_pessoa_inativa_nao_zera_piso_semanal(dados_padrao: DadosDoPrograma) -> None:
+    """Integrante desativado não deve ser considerado presente nem puxar o piso para 0 (Bug L1)."""
+    dados_padrao.pessoas = dados_padrao.pessoas[:4]
+    p_trab1, p_trab2, p_inativa, p_ferias = dados_padrao.pessoas
+    p_inativa.ativo = False
+    p_ferias.indisponibilidades = {date(2026, 11, 7), date(2026, 11, 14)}
+
+    for dia in (date(2026, 11, 7), date(2026, 11, 14)):
+        pl = Plantao(data=dia, periodo="manhã", qtd_duplas=1, duplas=[Dupla(p_trab1.id, p_trab2.id)])
+        dados_padrao.escalas.append(Escala(plantoes=[pl], gerada_em=datetime.now(), confirmada=True))
+
+    cont = calcular_contadores(dados_padrao)
+    assert cont.carga[p_ferias.id] == 2
+
+
+def test_ajustar_contadores_nao_congela_data_confirmada_ao_excluir_escala(
+    dados_padrao: DadosDoPrograma,
+) -> None:
+    """Se a data do último plantão não foi alterada manualmente, excluir a escala deve zerá-la (Bug L4)."""
+    from src.escala.edicao import excluir_escala
+    from src.escala.historico import ajustar_contadores_pessoa
+
+    dados_padrao.pessoas = dados_padrao.pessoas[:2]
+    p1, p2 = dados_padrao.pessoas
+    pl = Plantao(data=date(2026, 11, 7), periodo="manhã", qtd_duplas=1, duplas=[Dupla(p1.id, p2.id)])
+    dados_padrao.escalas.append(Escala(plantoes=[pl], gerada_em=datetime.now(), confirmada=True))
+
+    # Edita apenas a carga de p2 mantendo p1 com a mesma data já confirmada
+    ajustar_contadores_pessoa(dados_padrao, p1.id, 1, 0, date(2026, 11, 7))
+    assert p1.ultimo_plantao_manual is None
+
+    excluir_escala(dados_padrao, 0)
+    cont = calcular_contadores(dados_padrao)
+    assert cont.ultimo_plantao.get(p1.id) is None

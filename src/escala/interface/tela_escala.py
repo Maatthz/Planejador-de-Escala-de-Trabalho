@@ -84,6 +84,7 @@ class TelaEscala(ctk.CTkFrame):
         self._modo_periodo: str = "esta"
         # Escala ativa sendo exibida (pode ser o rascunho ou uma do histórico)
         self.escala_ativa: Escala | None = self.dados.rascunho
+        self._visualizando_historico: bool = False
 
         # Cache de estrutura e estado para reuso de widgets in-place (sem destroy repetido)
         self._estado_faixa_status: tuple | None = ("__inicial__",)
@@ -118,6 +119,16 @@ class TelaEscala(ctk.CTkFrame):
 
         linha = ctk.CTkFrame(barra, fg_color="transparent")
         linha.pack(fill="x", padx=16, pady=12)
+
+        # Empacota primeiro o botão principal à direita para nunca ser cortado em resoluções menores
+        self.btn_gerar = BotaoGrande(
+            linha,
+            "Gerar escala",
+            comando=self._executar_geracao,
+            variante="primaria",
+            height=40,
+        )
+        self.btn_gerar.pack(side="right", padx=(10, 0))
 
         # Botões de escolha do período
         lbl_per = ctk.CTkLabel(linha, text="Período:", font=FONTE_SUBTITULO, text_color=COR_TEXTO)
@@ -182,17 +193,7 @@ class TelaEscala(ctk.CTkFrame):
             variante="secundaria",
             height=36,
         )
-        btn_feriado.pack(side="left", padx=(0, 14))
-
-        # Botão principal Gerar Escala
-        self.btn_gerar = BotaoGrande(
-            linha,
-            "Gerar escala",
-            comando=self._executar_geracao,
-            variante="primaria",
-            height=40,
-        )
-        self.btn_gerar.pack(side="right")
+        btn_feriado.pack(side="left", padx=(0, 8))
 
     def _construir_rodape(self) -> None:
         """Rodapé com botões de quadro de justiça, histórico, confirmação e copiar WhatsApp."""
@@ -242,11 +243,22 @@ class TelaEscala(ctk.CTkFrame):
 
     def atualizar_tela(self) -> None:
         """Atualiza a exibição da escala ativa, faixas de status e avisos."""
-        # Se houver rascunho e nenhuma outra escala selecionada, usa o rascunho
-        if self.dados.rascunho is not None:
-            self.escala_ativa = self.dados.rascunho
-        elif self.escala_ativa is None and self.dados.escalas:
-            self.escala_ativa = self.dados.escalas[-1]
+        if (
+            self._visualizando_historico
+            and self.escala_ativa is not None
+            and self.escala_ativa in self.dados.escalas
+        ):
+            pass
+        else:
+            self._visualizando_historico = False
+            if self.dados.rascunho is not None:
+                self.escala_ativa = self.dados.rascunho
+            elif self.escala_ativa in self.dados.escalas:
+                pass
+            elif self.dados.escalas:
+                self.escala_ativa = self.dados.escalas[-1]
+            else:
+                self.escala_ativa = None
 
         self._atualizar_faixa_status()
         self._atualizar_cartoes_plantoes()
@@ -627,6 +639,7 @@ class TelaEscala(ctk.CTkFrame):
                 inicio=self.data_inicio,
                 qtd_semanas=qtd_sem,
             )
+            self._visualizando_historico = False
             self.escala_ativa = nova_escala
             self.ao_mudar()
         except ErroEscala as erro:
@@ -650,6 +663,7 @@ class TelaEscala(ctk.CTkFrame):
                 return
 
         confirmar_rascunho(self.dados)
+        self._visualizando_historico = False
         self.escala_ativa = self.dados.escalas[-1] if self.dados.escalas else None
         self.ao_mudar()
 
@@ -663,9 +677,8 @@ class TelaEscala(ctk.CTkFrame):
         self.clipboard_clear()
         self.clipboard_append(texto)
 
-        texto_original = self.btn_copiar.cget("text")
         self.btn_copiar.configure(text="✅ Copiado!")
-        self.after(2000, lambda: self.btn_copiar.configure(text=texto_original))
+        self.after(2000, lambda: self.btn_copiar.configure(text="📋 Copiar para WhatsApp"))
 
     def _atualizar_destaque_botoes_periodo(self, modo: str = "esta") -> None:
         """Atualiza cores dos botões de período e texto descritivo do intervalo de datas."""
@@ -775,5 +788,6 @@ class TelaEscala(ctk.CTkFrame):
 
     def _visualizar_escala_historico(self, escala: Escala) -> None:
         """Define a escala do histórico como a ativa na tela."""
+        self._visualizando_historico = True
         self.escala_ativa = escala
         self.atualizar_tela()

@@ -66,6 +66,9 @@ def esta_presente(
     pessoa: Pessoa, dias_com_plantao: list[date], config: Configuracao
 ) -> bool:
     """Diz se a pessoa conta como presente na semana (regra da seção 8.1/8.3)."""
+    if not pessoa.ativo:
+        return False
+
     if not dias_com_plantao:
         return True
 
@@ -174,6 +177,7 @@ def ajustar_contadores_pessoa(
 
     plantoes_confirmados = 0
     feriados_confirmados = 0
+    ultimo_confirmado: date | None = None
     for escala in dados.escalas:
         if escala.confirmada:
             for plantao in escala.plantoes:
@@ -181,10 +185,14 @@ def ajustar_contadores_pessoa(
                     plantoes_confirmados += 1
                     if plantao.eh_feriado:
                         feriados_confirmados += 1
+                    if ultimo_confirmado is None or plantao.data >= ultimo_confirmado:
+                        ultimo_confirmado = plantao.data
 
     pessoa.ajuste_plantoes = plantoes_feitos - plantoes_confirmados
     pessoa.ajuste_feriados = feriados_trabalhados - feriados_confirmados
-    pessoa.ultimo_plantao_manual = ultimo_plantao
+    pessoa.ultimo_plantao_manual = (
+        None if ultimo_plantao == ultimo_confirmado else ultimo_plantao
+    )
 
 
 def quadro_de_justica(dados: DadosDoPrograma) -> list[ResumoJustica]:

@@ -46,7 +46,8 @@ def pasta_de_dados() -> Path:
 def _obter_logger(pasta: Path) -> logging.Logger:
     """Configura e retorna o logger com arquivo registro.log na pasta de dados."""
     logger = logging.getLogger("escala.armazenamento")
-    if not logger.handlers:
+    logger_pai = logging.getLogger("escala")
+    if not logger.handlers and not logger_pai.handlers:
         arquivo_log = pasta / "registro.log"
         handler = RotatingFileHandler(
             arquivo_log, maxBytes=1_000_000, backupCount=3, encoding="utf-8"
@@ -244,6 +245,8 @@ def _gravar_arquivo_atomico(caminho_destino: Path, conteudo_dict: dict) -> None:
     texto = json.dumps(conteudo_dict, indent=2, ensure_ascii=False)
     with caminho_tmp.open("w", encoding="utf-8") as f:
         f.write(texto)
+        f.flush()
+        os.fsync(f.fileno())
     os.replace(caminho_tmp, caminho_destino)
 
 

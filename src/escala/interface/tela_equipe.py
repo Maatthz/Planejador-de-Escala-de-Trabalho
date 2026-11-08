@@ -375,6 +375,16 @@ class TelaEquipe(ctk.CTkFrame):
                 f"Tem certeza que deseja remover '{pessoa.nome}' definitivamente da equipe?",
             ):
                 self.dados.pessoas.remove(pessoa)
+                self.dados.configuracao.nunca_juntos = [
+                    par for par in self.dados.configuracao.nunca_juntos if pessoa.id not in par
+                ]
+                self.dados.configuracao.sempre_juntos = [
+                    par for par in self.dados.configuracao.sempre_juntos if pessoa.id not in par
+                ]
+                if self.dados.rascunho is not None and any(
+                    pessoa.id in pl.pessoas() for pl in self.dados.rascunho.plantoes
+                ):
+                    self.dados.rascunho = None
                 janela.destroy()
                 self.ao_mudar()
 

@@ -114,7 +114,7 @@ class VisaoEscala:
 
         dd_semanas = ft.Dropdown(
             value=str(self.qtd_semanas),
-            width=140,
+            width=150,
             dense=True,
             on_select=self._ao_mudar_semanas,
             options=[

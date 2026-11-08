@@ -44,7 +44,7 @@ jobs:
       - name: Empacotar executável único com PyInstaller
         shell: pwsh
         run: |
-          pyinstaller --noconfirm --onefile --windowed --name PlanejadorEscala --collect-data customtkinter iniciar.py
+          pyinstaller --noconfirm --onefile --windowed --name PlanejadorEscala --collect-all flet --collect-all flet_desktop --collect-data customtkinter iniciar.py
 
       - name: Gerar hash SHA-256 do executável
         shell: pwsh

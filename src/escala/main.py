@@ -3,13 +3,23 @@
 import logging
 from logging.handlers import RotatingFileHandler
 import msvcrt
+import os
 from pathlib import Path
+import sys
 from typing import TextIO
 
 from src.escala.armazenamento import carregar, pasta_de_dados
 from src.escala.interface_flet.app_flet import iniciar_app_flet
 
 _ARQUIVO_TRAVA: TextIO | None = None
+
+
+def _garantir_streams_padrao() -> None:
+    """No modo --windowed do PyInstaller, redireciona stdout/stderr nulos para devnull."""
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, "w", encoding="utf-8")
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, "w", encoding="utf-8")
 
 
 def adquirir_trava_instancia(pasta: Path | None = None) -> bool:
@@ -58,6 +68,7 @@ def configurar_logging(pasta: Path | None = None) -> logging.Logger:
 
 def iniciar() -> None:
     """Configura o registro de logs, carrega os dados e inicia a janela principal em Flet."""
+    _garantir_streams_padrao()
     logger = configurar_logging()
     if not adquirir_trava_instancia():
         logger.warning("Tentativa de abrir segunda instância bloqueada (programa.lock ativo).")

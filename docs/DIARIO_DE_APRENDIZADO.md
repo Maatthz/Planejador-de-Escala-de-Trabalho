@@ -409,7 +409,8 @@ em uma pessoa na aba Folgas), o `AGENTS.md` recebeu as seções **10.4 (Regras d
 ## 07/11/2026 — Migração Oficial para Flet e Correção de Bugs de Negócio e Persistência
 
 ### O que mudou
-- Oficializada a interface gráfica em **Flet** no pacote `src/escala/interface_flet/` (`app_flet.py`, `tema.py`, `visao_escala.py`, `visao_equipe_folgas.py`, `dialogos.py`, `janela_configuracoes.py`), conectada ao armazenamento real (`%APPDATA%/PlanejadorEscala/dados.json`), à recuperação automática de backup e ao atualizador via GitHub Releases.
+- Oficializada a interface gráfica em **Flet** (versão `0.2.0`) no pacote `src/escala/interface_flet/` (`app_flet.py`, `tema.py`, `visao_escala.py`, `visao_equipe_folgas.py`, `dialogos.py`, `janela_configuracoes.py`), conectada ao armazenamento real (`%APPDATA%/PlanejadorEscala/dados.json`), à recuperação automática de backup e ao atualizador via GitHub Releases.
+- Atualizado o empacotamento PyInstaller (`release.yml` e `dist/PlanejadorEscala.exe`) com `--collect-all flet --collect-all flet_desktop` e proteção de `sys.stdout`/`sys.stderr` no modo `--windowed`.
 - Adicionadas na interface Flet todas as funcionalidades de produção que faltavam no protótipo: janela completa de **Configurações** com ajuda contextual (`criar_bloco_ajuda` + `textos_ajuda.py`), **edição manual em lote** no Quadro de Justiça, registro de **período contínuo de férias**, exclusão segura de integrantes e trava de instância única (`programa.lock` com `msvcrt.locking`).
 - Corrigidos todos os bugs de lógica e persistência apontados na revisão (`docs/REVISAO_TECH_LEAD.md`):
   - **L1 (`historico.py`)**: `esta_presente` agora exige `pessoa.ativo == True`, impedindo que integrantes desativados puxem o piso semanal para zero e penalizem quem retorna de férias.
